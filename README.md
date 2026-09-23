@@ -68,37 +68,21 @@ Linear の Repository ラベルで対象を選ぶ場合は、ルートの [`WORK
 - **Markdown本文のプロンプト**：テンプレートにある Linear 用ツール・スキルの指定、作業記録やコメントの操作、状態遷移、PRの紐付け手順を、連携先に合う内容へ書き換えます。`tracker.kind` を変えるだけでは、本文の指示は切り替わりません。
 
 連携先にかかわらず、Codex は実装・検証・PR作成を担当し、人間がマージと課題の完了を行います。
-テンプレートの `Merging` への分岐や `land` の実行指示も、この方針に合わせて書き換えてください。
+フォーク元の `elixir/WORKFLOW.md` を使う場合は、`Merging` への分岐や `land` の実行指示も、この方針に合わせて書き換えてください。
 レビュー中は課題を終了状態にせず、エージェントの実行対象から外します。
 open/closed のような状態しか扱えない連携先では、独自のレビュー状態を追加する代わりに、`tracker.required_labels` などの対応済みフィルターで実行対象を制御します。
 Repositoryラベル用ワークフローは、終了時に課題の作業ディレクトリだけを削除し、PRを自動で閉じません。
 承認した課題は、人間がPRをマージしてから完了させてください。
 
-### Linear の設定例（現在の運用）
+### Linear の設定
 
-コピーしたワークフローの冒頭のYAMLに、次の設定を反映します。
-`your-project-slug` はプレースホルダーです。Linear の対象プロジェクトURLで、`/project/` の直後にあるプロジェクト識別子へ置き換えてください。
+設定値と実行手順の正本は、ルートの [`WORKFLOW.md`](WORKFLOW.md) です。
+コピーしたファイルの `tracker.provider.project_slug` を、Linear の対象プロジェクトURLの
+`/project/` 直後にある識別子へ置き換え、`LINEAR_API_KEY` をサービスの環境変数で渡します。
+並列数・ポーリング間隔・状態名は、このファイルで調整してください。
 
-```yaml
-tracker:
-  kind: linear
-  provider:
-    project_slug: your-project-slug
-  active_states:
-    - Todo
-    - In Progress
-    - Rework
-hooks: {}
-agent:
-  max_concurrent_agents: 1
-```
-
-`LINEAR_API_KEY` はサービスの環境変数で渡します。
-この例では、レビュー待ちに `Human Review`、修正作業に `Rework`、マージ後の完了に `Done` を使います。
-これらの状態を Linear に用意し、作業ディレクトリを残すために `Human Review` は実行対象・終了状態のどちらにも含めないでください。
-YAMLだけでなく、ルート `WORKFLOW.md` の Repository bootstrap と実装・PR引き渡し手順も使います。
-ラベル未指定・複数候補・不正なラベル名やorigin・アクセス失敗では作業を止めます。
-再試行は同じcloneを再利用しますが、対象が変わっていたら停止し、既存作業を引き継ぎません。
+レビュー待ちの `Human Review` は実行対象・終了状態のどちらにも含めません。
+これにより、レビュー中の再実行と作業ディレクトリの削除を防ぎます。
 ラベル名の規則、既存cloneの扱い、検証手順は[Repositoryラベル運用](docs/repository-routing.md)を参照してください。
 
 ### サービスを起動する
