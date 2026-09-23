@@ -21,8 +21,8 @@ This directory contains the current Elixir/OTP implementation of Symphony, based
 4. Sends a workflow prompt to Codex
 5. Keeps Codex working on the issue until the work is done
 
-During app-server sessions, the selected tracker adapter may advertise provider-native tools. The
-Linear serves `linear_graphql`, GitHub Issues serves `github_api`, Jira Cloud serves
+During app-server sessions, the selected tracker adapter may advertise provider-native tools. Linear
+serves `linear_graphql`, GitHub Issues serves `github_api`, Jira Cloud serves
 `jira_rest`, Asana serves `asana_api`, and GitLab serves `gitlab_api`. Symphony executes those
 tools with configured host-side auth and removes declared tracker-token environment variables from
 the Codex child, so the agent does not need a second tracker login.
@@ -37,42 +37,86 @@ tracker issue can become a dispatch candidate again after restart.
 
 ## How to use it
 
-1. Make sure your codebase is set up to work well with agents: see
-   [Harness engineering](https://openai.com/index/harness-engineering/).
-2. Get a new personal token in Linear via Settings → Security & access → Personal API keys, and
-   set it as the `LINEAR_API_KEY` environment variable.
-3. Copy this directory's `WORKFLOW.md` to your repo.
-4. Optionally copy the `commit`, `push`, `pull`, `land`, and `linear` skills to your repo.
-   - The `linear` skill expects Symphony's `linear_graphql` app-server tool for raw Linear GraphQL
-     operations such as comment editing or upload flows.
-5. Customize the copied `WORKFLOW.md` file for your project.
-   - To get your project's slug, right-click the project and copy its URL. The slug is part of the
-     URL.
-   - When creating a workflow based on this repo, note that it depends on non-standard Linear
-     issue statuses: "Rework", "Human Review", and "Merging". You can customize them in
-     Team Settings → Workflow in Linear.
-6. Follow the instructions below to install the required runtime dependencies and start the service.
+The steps below configure this fork for Linear and human PR review. For another
+tracker, use the corresponding [adapter settings](#linear-adapter-profile).
 
-## Prerequisites
+1. Make `git`, an authenticated `codex` CLI, and an authenticated `gh` CLI
+   available to the service user. Tracker auth is separate from GitHub access
+   used for cloning, pushing, and PR creation.
+2. Provide `LINEAR_API_KEY` through the service environment. Keep token values
+   out of the workflow file and repository.
+3. Build from source below, or download a [Burrito release](#burrito-releases).
+4. Copy `elixir/WORKFLOW.md` to a runtime location outside the checkout, then
+   apply the [fork workflow settings](#fork-workflow-settings). Choose a separate
+   workspace root and ensure the Linear states used by the workflow exist.
+5. Start Symphony with the absolute path to that configured runtime file.
 
-We recommend using [mise](https://mise.jdx.dev/) to manage Elixir/Erlang versions.
+The supplied workspace hooks invoke `mise`, Elixir, and `gh`, even when Symphony
+itself runs as a bundled binary. Install those tools on the worker host when
+using these hooks.
 
-```bash
-mise install
-mise exec -- elixir --version
-```
+### Build from source
 
-## Run
+From a new checkout, use [mise](https://mise.jdx.dev/) for the pinned Elixir/Erlang
+versions:
 
 ```bash
-git clone https://github.com/openai/symphony
-cd symphony/elixir
+git clone https://github.com/big-mon/personal-symphony
+cd personal-symphony/elixir
 mise trust
 mise install
 mise exec -- mix setup
 mise exec -- mix build
-mise exec -- ./bin/symphony ./WORKFLOW.md
 ```
+
+After preparing the runtime workflow, start the service from `elixir/`:
+
+```bash
+mise exec -- ./bin/symphony /absolute/path/to/WORKFLOW.md \
+  --i-understand-that-this-will-be-running-without-the-usual-guardrails
+```
+
+The acknowledgement flag is required by the CLI. This template grants Codex the
+host user's access; review [deployment and permissions](../docs/git-permissions.md)
+before starting it.
+
+### Fork workflow settings
+
+Merge this configuration into the copied workflow's YAML front matter; retain
+`tracker.kind: linear` and the other settings you intend to use. Replace the
+project slug if targeting another Linear project.
+
+```yaml
+tracker:
+  provider:
+    project_slug: personal-symphony-506ccfb1912c
+  active_states:
+    - Todo
+    - In Progress
+    - Rework
+hooks:
+  after_create: |
+    git clone --depth 1 https://github.com/big-mon/personal-symphony .
+    if command -v mise >/dev/null 2>&1; then
+      cd elixir && mise trust && mise exec -- mix deps.get
+    fi
+  before_remove: |
+    cd elixir && mise exec -- mix workspace.before_remove --repo big-mon/personal-symphony
+agent:
+  max_concurrent_agents: 1
+```
+
+Also adapt the Markdown prompt body: Codex implements, validates, opens the PR,
+and hands the issue to `Human Review`; humans merge and complete the issue.
+Replace the template's `Merging` routes and `land` instructions with that policy.
+Keep `Human Review` outside both active and terminal states so review pauses work
+without removing the workspace. Use `Rework` for requested changes.
+
+The `before_remove` hook closes open PRs for the workspace branch when the issue
+becomes terminal. Mark an accepted issue `Done` after its PR has been merged.
+
+The repository template is not the deployed workflow. Changes here do not update
+an installed service's runtime file; review and deploy that file separately.
 
 ## Burrito releases
 
@@ -92,15 +136,18 @@ artifacts without creating a release.
 
 The `burrito-nightly` workflow builds each push to `main`, with no scheduled rebuilds.
 After all four platform smoke tests pass, it updates the rolling
-[`nightly` prerelease](https://github.com/openai/symphony/releases/tag/nightly),
+[`nightly` prerelease](https://github.com/big-mon/personal-symphony/releases/tag/nightly),
 including binaries and checksums. Nightly binaries use a `-nightly` version suffix;
 the release notes identify the source commit. Stable releases remain unchanged.
 
-After downloading the executable for your platform from a release:
+Download the executable for your platform from this fork's
+[releases](https://github.com/big-mon/personal-symphony/releases). Substitute its
+actual filename below and use the configured runtime workflow:
 
 ```bash
 chmod +x ./symphony-v0.0.1-macos_arm64
-./symphony-v0.0.1-macos_arm64 ./WORKFLOW.md
+./symphony-v0.0.1-macos_arm64 /absolute/path/to/WORKFLOW.md \
+  --i-understand-that-this-will-be-running-without-the-usual-guardrails
 ```
 
 ## Configuration
@@ -108,10 +155,12 @@ chmod +x ./symphony-v0.0.1-macos_arm64
 Pass a custom workflow file path to `./bin/symphony` when starting the service:
 
 ```bash
-./bin/symphony /path/to/custom/WORKFLOW.md
+./bin/symphony /path/to/custom/WORKFLOW.md \
+  --i-understand-that-this-will-be-running-without-the-usual-guardrails
 ```
 
-If no path is passed, Symphony defaults to `./WORKFLOW.md`.
+If no path is passed, Symphony defaults to `./WORKFLOW.md` in the current
+directory. Pass the runtime path explicitly to avoid starting with the template.
 
 Optional flags:
 
@@ -322,7 +371,7 @@ The observability UI now runs on a minimal Phoenix stack:
 
 - `lib/`: application code and Mix tasks
 - `test/`: ExUnit coverage for runtime behavior
-- `WORKFLOW.md`: in-repo workflow contract used by local runs
+- `WORKFLOW.md`: workflow template to copy and configure before running
 - `../.codex/`: repository-local Codex skills and setup helpers
 
 ## Testing
@@ -405,19 +454,6 @@ export GITLAB_PAT=...
 export SYMPHONY_LIVE_GITLAB_PROJECT_ID=...
 SYMPHONY_RUN_GITLAB_LIVE_E2E=1 mix test test/symphony_elixir/gitlab_live_e2e_test.exs
 ```
-
-## FAQ
-
-### Why Elixir?
-
-Elixir is built on Erlang/BEAM/OTP, which is great for supervising long-running processes. It has an
-active ecosystem of tools and libraries. It also supports hot code reloading without stopping
-actively running subagents, which is very useful during development.
-
-### What's the easiest way to set this up for my own codebase?
-
-Launch `codex` in your repo, give it the URL to the Symphony repo, and ask it to set things up for
-you.
 
 ## License
 
