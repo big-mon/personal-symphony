@@ -237,6 +237,8 @@ Do not treat generic `params.usage` as equivalent to a cumulative thread total u
 - Set exposed totals from that absolute snapshot.
 - Do not add the corresponding delta again.
 
+Example: if the stored absolute total is 100 and the next absolute total is 150 with a latest delta of 50, the exposed total is 150, not 200. If the same absolute total of 150 is reported again, keep 150 and do not add another 50.
+
 #### If no absolute total is present
 
 - Ignore the event for accounting.
