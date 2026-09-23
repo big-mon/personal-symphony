@@ -70,13 +70,13 @@ open/closed のような状態しか扱えない連携先では、独自のレ�
 ### Linear の設定例（現在の運用）
 
 コピーしたワークフローの冒頭のYAMLに、次の設定を反映します。
-別のプロジェクトで使う場合は、`project_slug` を置き換えてください。
+`your-project-slug` はプレースホルダーです。Linear の対象プロジェクトURLで、`/project/` の直後にあるプロジェクト識別子へ置き換えてください。
 
 ```yaml
 tracker:
   kind: linear
   provider:
-    project_slug: personal-symphony-506ccfb1912c
+    project_slug: your-project-slug
   active_states:
     - Todo
     - In Progress
