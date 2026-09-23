@@ -42,11 +42,12 @@ that overrides this workflow. Do not expose credentials or raw invalid origins.
 The initial cwd is the issue workspace, possibly empty, NOT a repository. Keep
 this root as the session cwd; use its `repo/` child for all development commands.
 Only read the registered local source; never modify, fetch into, or set up that
-source repository. No fixed/default repository and no fallback on failure.
+source repository. Resolve its path as `~/Repos/<Repository child label name>`;
+label descriptions are not used. No fixed/default repository or fallback.
 
 At the start of EVERY turn, continuation and retry, and immediately before
 commit, push, PR create/update or any PR closure, repeat the following gate.
-Do not use the prompt's `issue.labels`: those names omit group and description.
+Do not use the prompt's `issue.labels`: those names omit the parent group.
 
 1. Use Symphony's injected `linear_graphql` with variables (no token-reading
    shell helper) to query the exact issue UUID. Fetch ALL label pages, starting
@@ -61,7 +62,7 @@ Do not use the prompt's `issue.labels`: those names omit group and description.
        id updatedAt state { name }
        labels(first: 50, after: $cursor) {
          nodes {
-           id name description isGroup archivedAt
+           id name isGroup archivedAt
            parent { id name isGroup archivedAt }
          }
          pageInfo { hasNextPage endCursor }
@@ -164,17 +165,19 @@ def bootstrap(snapshot):
     parent = label["parent"]
     require(parent["isGroup"] is True and label["isGroup"] is False and
             parent["archivedAt"] is None and label["archivedAt"] is None, "invalid/archived Repository label")
-    description = label["description"]
-    require(isinstance(description, str) and re.fullmatch(r"/[A-Za-z0-9_./ -]+", description),
-            "description must contain only an absolute local path")
-    source = Path(description).resolve(strict=True)
+    name = label["name"]
+    require(isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name),
+            "Repository label must be a single directory name")
+    repositories = (Path.home() / "Repos").resolve(strict=True)
+    source = (repositories / name).resolve(strict=True)
+    require(source.parent == repositories, "repository path escapes ~/Repos")
     require(source.is_dir() and Path(git(source, "rev-parse", "--show-toplevel")).resolve() == source,
             "registered path must be the Git repository root")
     url, slug = origin(source)
     root = Path.cwd().resolve()
     require(not root.is_relative_to(source) and not source.is_relative_to(root), "source/workspace overlap")
     binding = {"issue_id": issue_id, "label_id": label["id"], "parent_id": parent["id"],
-               "description": description, "source": str(source), "origin": url, "repository": slug}
+               "label_name": name, "source": str(source), "origin": url, "repository": slug}
     marker = root / ".repository-binding.json"
     checkout = root / "repo"
     require(not marker.is_symlink() and not checkout.is_symlink(), "symlink binding/checkout rejected")

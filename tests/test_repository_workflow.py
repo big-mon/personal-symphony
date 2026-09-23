@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 WORKFLOW = Path(__file__).resolve().parents[1] / "WORKFLOW.md"
 CODE = WORKFLOW.read_text().split("```python\n", 1)[1].split("\n```", 1)[0]
@@ -24,9 +25,14 @@ class Routing(unittest.TestCase):
         self.cwd = Path.cwd()
         self.addCleanup(os.chdir, self.cwd)
         self.addCleanup(MODULE.update, git=REAL_GIT)
+        home = self.root / "home"
+        (home / "Repos").mkdir(parents=True)
+        home_patch = patch.object(Path, "home", return_value=home)
+        home_patch.start()
+        self.addCleanup(home_patch.stop)
         self.sources = []
         for name in ("alpha", "beta"):
-            source = self.root / name
+            source = home / "Repos" / name
             source.mkdir()
             REAL_GIT(source, "init", "-b", "main")
             (source / "README.md").write_text(name)
@@ -55,7 +61,7 @@ class Routing(unittest.TestCase):
         MODULE["git"] = fixture_transport
 
     def snapshot(self, index=0):
-        label = {"id": f"label-{index}", "name": "untrusted display name", "description": str(self.sources[index]),
+        label = {"id": f"label-{index}", "name": self.sources[index].name,
                  "isGroup": False, "archivedAt": None,
                  "parent": {"id": "group", "name": "Repository", "isGroup": True, "archivedAt": None}}
         issue_id = "11111111-1111-4111-8111-111111111111"
@@ -98,10 +104,10 @@ class Routing(unittest.TestCase):
         ambiguous = copy.deepcopy(base)
         self.labels(ambiguous)["nodes"].extend(self.labels(self.snapshot(1))["nodes"])
         cases.append(ambiguous)
-        for value in (None, "", "relative/path", str(self.sources[0]) + ";touch INJECTED",
-                      "$(touch INJECTED)", str(self.root / "absent"), "https://github.com/example/alpha"):
+        for value in (None, "", ".", "..", "../alpha", "/alpha", "owner/alpha",
+                      "alpha;touch INJECTED", "$(touch INJECTED)", "absent"):
             item = copy.deepcopy(base)
-            self.labels(item)["nodes"][0]["description"] = value
+            self.labels(item)["nodes"][0]["name"] = value
             cases.append(item)
         for item in cases:
             with self.subTest(item=item), self.assertRaises((ValueError, OSError)):
@@ -224,6 +230,21 @@ class Routing(unittest.TestCase):
         self.assertEqual(binding, self.run_gate(snapshot))
         self.assertEqual("", REAL_GIT(self.workspace / "repo", "for-each-ref", "--format=%(refname)"))
         self.assertTrue(REAL_GIT(self.workspace / "repo", "symbolic-ref", "HEAD").startswith("refs/heads/"))
+
+    def test_description_is_ignored_and_source_cannot_escape_repos(self):
+        snapshot = self.snapshot()
+        self.labels(snapshot)["nodes"][0]["description"] = "$(touch INJECTED); /wrong/path"
+        binding = self.run_gate(snapshot)
+        self.assertEqual(str(self.sources[0]), binding["source"])
+        self.assertNotIn("description", binding)
+        self.assertFalse((self.workspace / "INJECTED").exists())
+        outside = self.root / "outside"
+        outside.mkdir()
+        link = self.sources[0].parent / "escape"
+        link.symlink_to(outside, target_is_directory=True)
+        self.labels(snapshot)["nodes"][0]["name"] = "escape"
+        with self.assertRaisesRegex(ValueError, "escapes"):
+            self.run_gate(snapshot)
 
     def test_cli_redacts_untrusted_input(self):
         snapshot = self.snapshot()

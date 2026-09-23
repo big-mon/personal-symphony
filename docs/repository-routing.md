@@ -1,10 +1,12 @@
 # Repositoryラベルで作業先を選ぶ
 
-Linear の `Repository` ラベルグループから子ラベルを1つ選び、説明欄に
-ローカルGitリポジトリの絶対パスだけを登録します。例：`/srv/repos/example`。
-初版は ASCII の英数字、`_`、`.`、`/`、空白、`-` を含むパスに対応します。
-URL、`owner/repo`、`GitHub: ... Local: ...` の混在書式は受け付けません。
-説明を推測して別のリポジトリへ進むことはありません。
+Linear の `Repository` ラベルグループから子ラベルを1つ選びます。
+対象のローカルGitリポジトリは、実行ユーザーの `~/Repos/<子ラベル名>` です。
+例えば `example-app` なら `~/Repos/example-app`。説明欄は取得・解釈しません。
+
+ラベル名は英数字で始まり、英数字・`_`・`.`・`-` だけの単一ディレクトリ名にします。
+`owner/repo`、`..`、絶対パス、シェル構文は受け付けず、対応するディレクトリが
+なければ停止します。symlinkの解決先も `~/Repos` の直下に限定します。
 
 登録先は読み取り専用の参照元です。Gitルートであることと、単一の `origin` の
 fetch/push先が一致することを確認します。対応するoriginは認証情報を含まない
@@ -16,7 +18,7 @@ fetch/push先が一致することを確認します。対応するoriginは認�
 
 ルートの [`WORKFLOW.md`](../WORKFLOW.md) が設定と実行手順の正本です。
 `after_create` の固定cloneを外し、空ディレクトリから起動したCodexが、
-注入された `linear_graphql` で課題ラベルの親グループ・説明を取得します。
+注入された `linear_graphql` で課題ラベルの名前と親グループを取得します。
 外部のbootstrapヘルパーやElixir本体の変更は不要です。
 Python 3.9以上の標準ライブラリを使う検証コードをWORKFLOWに含め、
 Codexが作業ルートの一時ファイルへそのまま保存して実行します。
@@ -26,11 +28,11 @@ Codexが作業ルートの一時ファイルへそのまま保存して実行し
 厳密に1つ要求し、取得失敗、部分的なGraphQLエラー、ページ欠落、重複、
 ページ取得中の課題更新を停止理由にします。表示用の `issue.labels` は使いません。
 
-作業ルートの `.repository-binding.json` に課題・ラベル・親のID、登録パス、
+作業ルートの `.repository-binding.json` に課題・ラベル・親のID、ラベル名、解決済みパス、
 検証済みoriginを保存します。再試行時もLinearから取り直し、この記録と
 cloneのfetch/push originが一致する場合だけ再利用します。
 未コミット変更は保持します。対象変更、未登録の既存clone、壊れたclone、
-不完全なbindingは自動修復せず、Human Reviewへ引き渡します。
+不完全なbindingや旧形式のbindingは自動修復せず、Human Reviewへ引き渡します。
 ラベル取得自体ができなければ停止理由をローカルに残します。
 
 各ターン・継続・再試行の開始時とcommit/push/PR操作直前に再検証します。
