@@ -1,11 +1,10 @@
 # Codex permissions for Symphony runs
 
-The root [`WORKFLOW.md`](../WORKFLOW.md) keeps the session cwd at the issue
-workspace and clones into `repo/`. On macOS with Symphony v0.0.3 and Codex CLI
-0.154.0, `workspace-write` / `never` passed native branch/add/commit/push,
-including reuse in a fresh session. Keep that outer cwd: [protected paths](https://learn.chatgpt.com/docs/agent-approvals-security#protected-paths-in-writable-roots)
+The root [`WORKFLOW.md`](../WORKFLOW.md) uses `workspace-write` / `never`,
+with the session cwd at the issue workspace and the checkout in `repo/`.
+Keep that outer cwd: [protected paths](https://learn.chatgpt.com/docs/agent-approvals-security#protected-paths-in-writable-roots)
 are relative to writable roots; starting the session inside `repo/` changes the layout.
-Permission failures still use the blocked-access procedure below.
+Permission failures use the blocked-access procedure below.
 
 ## Full-access profile: elixir/WORKFLOW.md
 
@@ -35,7 +34,7 @@ Omitting these fields restores the engine's sandboxed defaults, not this profile
 
 ## Apply after human merge
 
-The installed service reads `/Users/agents/.config/symphony/WORKFLOW.md`.
+The installed service reads the WORKFLOW file supplied at startup.
 Changing the repository template does not change that file or deploy the policy.
 
 1. Wait for active sessions to finish and coordinate queued work before rollout.

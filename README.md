@@ -11,7 +11,7 @@ Linear の課題を受け取り、Codex が実装・検証・PR作成まで進�
 ## 使い始める
 
 このリポジトリを開いたAIエージェントに、セットアップや制約の確認を依頼してください。
-設定・実行手順の正本は [`WORKFLOW.md`](WORKFLOW.md)、既存環境への反映は[運用手順](docs/repository-routing.md)です。
+設定・実行手順の正本は [`WORKFLOW.md`](WORKFLOW.md)、セットアップ・設定変更は[運用手順](docs/repository-routing.md)です。
 [配布バイナリ](https://github.com/big-mon/personal-symphony/releases)やソースからの起動は[Elixirガイド](elixir/README.md)を参照します。
 
 Linear の `Repository` 子ラベルで、`~/Repos/<ラベル名>` にあるリポジトリを選びます。
