@@ -38,6 +38,10 @@ cloneのfetch/push originが一致する場合だけ再利用します。
 Linearの更新とGitHubへの書き込みを原子的にロックする仕組みはありません。
 作業中の対象変更は止めて人間が扱い、別リポジトリに差分を移しません。
 
+空のremoteも有効な未コミットのcloneとして保持します。ただしPRのbase branchが
+存在しなければ人間へ引き渡し、default branchへ直接pushしてレビューを迂回しません。
+実行対象の状態はSymphonyが設定から判定し、Repository検証コードには重複定義しません。
+
 clone後は対象側のAGENTSと開発手順を読みます。PR操作にはbindingの
 `owner/repo` を必ず明示し、添付済みPRも対象一致を確認します。
 作成後にURL・base repository・head SHAを読み返して照合します。

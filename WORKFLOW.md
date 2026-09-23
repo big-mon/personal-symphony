@@ -71,7 +71,9 @@ Do not use the prompt's `issue.labels`: those names omit group and description.
    ```
 
 2. For Backlog, Human Review, Merging or terminal states, end without repository
-   changes. Otherwise save the complete fresh responses as `.repository-pages.json`:
+   changes. Symphony owns configured active-state admission; the Repository
+   validator must not impose a second, hard-coded list of active state names.
+   Otherwise save the complete fresh responses as `.repository-pages.json`:
    `{"issue_id":"<issue UUID>","pages":[{"cursor":null,"response":{"data":...}},...]}`.
    Each subsequent entry records the actual cursor passed to that tool call.
    Preserve the full `data`/`errors` envelope, not a summary or inferred labels.
@@ -139,7 +141,6 @@ def bootstrap(snapshot):
         require(not response.get("errors"), "GraphQL errors; snapshot rejected")
         issue = response["data"]["issue"]
         require(issue["id"] == issue_id, "issue mismatch")
-        require(issue["state"]["name"] in ("Todo", "In Progress", "Rework"), "issue is not active")
         stamp = issue["updatedAt"]
         require(isinstance(stamp, str) and bool(stamp), "missing issue revision")
         require(version is None or stamp == version, "issue changed during pagination")
@@ -192,9 +193,12 @@ def bootstrap(snapshot):
     require((checkout / ".git").is_dir() and not (checkout / ".git").is_symlink(), "incomplete/linked clone")
     require(Path(git(checkout, "rev-parse", "--show-toplevel")).resolve() == checkout, "checkout root mismatch")
     require(origin(checkout) == (url, slug), "checkout origin differs from binding")
-    git(checkout, "rev-parse", "--verify", "HEAD")
-    # Recheck access on reuse too. Do not fetch/reset or discard uncommitted work.
-    git(checkout, "ls-remote", "--exit-code", "origin", "HEAD")
+    # Recheck access on reuse too. An empty remote has no refs or HEAD yet.
+    refs = git(checkout, "ls-remote", "origin")
+    if refs:
+        git(checkout, "rev-parse", "--verify", "HEAD")
+    else:
+        require(git(checkout, "symbolic-ref", "HEAD").startswith("refs/heads/"), "invalid unborn checkout")
     print(json.dumps({"repository": slug, "checkout": str(checkout), "binding": str(marker)}))
     return binding
 
@@ -215,7 +219,9 @@ plan, acceptance criteria, validation and blockers. Move Todo to In Progress.
 For Rework, read human feedback and reuse the bound clone/PR; do not automatically
 close a PR or discard work. Inspect the target's current branch and default branch
 (`git symbolic-ref refs/remotes/origin/HEAD`), status, linked PRs and instructions.
-Create a `codex/` branch when needed; never implement on the registered source.
+If the remote is empty and has no default branch, retain the valid unborn
+checkout and hand off the missing PR base as a blocker; never seed a default
+branch by bypassing human review. Create a `codex/` branch when needed; never implement on the registered source.
 Run commands in `repo/`. Reuse still-valid checks; rerun when their inputs change.
 
 Repeat the fresh Repository gate before commit/push and PR operations. Use the

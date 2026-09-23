@@ -48,7 +48,9 @@ class Routing(unittest.TestCase):
                 REAL_GIT(destination, "remote", "set-url", "origin", url)
                 return result
             if args[0] == "ls-remote":
-                return REAL_GIT(cwd, "ls-remote", "--exit-code", str(self.sources[0]), "HEAD")
+                url = REAL_GIT(cwd, "remote", "get-url", "origin")
+                source = self.sources[0 if "/alpha.git" in url else 1]
+                return REAL_GIT(cwd, "ls-remote", str(source))
             return REAL_GIT(cwd, *args)
         MODULE["git"] = fixture_transport
 
@@ -213,6 +215,15 @@ class Routing(unittest.TestCase):
         (self.workspace / "repo").symlink_to(self.sources[0], target_is_directory=True)
         with self.assertRaisesRegex(ValueError, "symlink"):
             self.run_gate(self.snapshot())
+
+    def test_custom_active_state_and_empty_remote(self):
+        snapshot = self.snapshot()
+        snapshot["pages"][0]["response"]["data"]["issue"]["state"]["name"] = "In Development"
+        REAL_GIT(self.sources[0], "update-ref", "-d", "refs/heads/main")
+        binding = self.run_gate(snapshot)
+        self.assertEqual(binding, self.run_gate(snapshot))
+        self.assertEqual("", REAL_GIT(self.workspace / "repo", "for-each-ref", "--format=%(refname)"))
+        self.assertTrue(REAL_GIT(self.workspace / "repo", "symbolic-ref", "HEAD").startswith("refs/heads/"))
 
     def test_cli_redacts_untrusted_input(self):
         snapshot = self.snapshot()
