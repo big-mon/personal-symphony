@@ -43,6 +43,9 @@ check media false false .github/media/demo.jpg .github/media/demo.mp4
 check unknown-media true false .github/media/script.sh
 check source true false elixir/lib/new.ex
 check mixed true false README.md elixir/lib/new.ex
+check root-agent-guide false false AGENTS.md
+check root-agent-guide-and-source true false AGENTS.md elixir/lib/new.ex
+check root-agent-guide-and-workflow false true AGENTS.md elixir/WORKFLOW.md
 check procedures false false .codex/skills/push/SKILL.md elixir/AGENTS.md
 check workflow false true elixir/WORKFLOW.md
 check workflow-and-source true true elixir/WORKFLOW.md elixir/lib/new.ex

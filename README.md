@@ -36,8 +36,60 @@ You need Git, an authenticated Codex CLI, and credentials for the selected track
 The supplied hooks also use GitHub CLI (`gh`) and the Elixir toolchain managed by
 `mise`.
 
-Follow the [Elixir setup guide](elixir/README.md#how-to-use-it) to build or install
-Symphony, prepare a workflow for this fork, and start the service. The optional
+The [Elixir guide](elixir/README.md) describes the upstream implementation and
+configuration. Use this fork's source and [releases](https://github.com/big-mon/personal-symphony/releases).
+For a source build:
+
+```bash
+git clone https://github.com/big-mon/personal-symphony
+cd personal-symphony/elixir
+mise trust
+mise install
+mise exec -- mix setup
+mise exec -- mix build
+```
+
+Copy `elixir/WORKFLOW.md` to a runtime location outside the checkout. Retain
+`tracker.kind: linear`, choose a separate workspace root, and merge these fork
+settings into its YAML front matter. Use your project's slug if different:
+
+```yaml
+tracker:
+  provider:
+    project_slug: personal-symphony-506ccfb1912c
+  active_states:
+    - Todo
+    - In Progress
+    - Rework
+hooks:
+  after_create: |
+    git clone --depth 1 https://github.com/big-mon/personal-symphony .
+    if command -v mise >/dev/null 2>&1; then
+      cd elixir && mise trust && mise exec -- mix deps.get
+    fi
+  before_remove: |
+    cd elixir && mise exec -- mix workspace.before_remove --repo big-mon/personal-symphony
+agent:
+  max_concurrent_agents: 1
+```
+
+Also replace the template prompt's `Merging` routes and `land` instructions with
+this fork's policy: Codex implements, validates, opens the PR, and hands the issue
+to `Human Review`; humans merge and complete it. Ensure these Linear states exist.
+Keep `Human Review` outside active and terminal states to preserve its workspace.
+The cleanup hook closes open PRs on terminal issues, so mark accepted work `Done`
+after merging its PR.
+
+Provide `LINEAR_API_KEY` through the service environment. Start from `elixir/`
+with the configured file and the CLI's required acknowledgement flag:
+
+```bash
+mise exec -- ./bin/symphony /absolute/path/to/WORKFLOW.md \
+  --i-understand-that-this-will-be-running-without-the-usual-guardrails
+```
+
+A downloaded binary accepts the same path and flag. The supplied workspace hooks
+still require the Elixir toolchain and `gh` on the worker host. The optional
 [web dashboard](elixir/README.md#web-dashboard) shows running and blocked work.
 
 `elixir/WORKFLOW.md` is a template. The running service reads the workflow path
@@ -46,7 +98,11 @@ Keep credentials in environment variables or host-side secret references.
 
 ## Work on this repository
 
-- [Agent instructions](AGENTS.md): repository rules and task-specific procedures.
+The `elixir/` tree is maintained upstream. Fork-specific documentation,
+operations, skills, and CI live outside it; keep Elixir changes limited to tasks
+that explicitly require them.
+
+- [Agent instructions](AGENTS.md): rules for fork work outside `elixir/`.
 - [Validation](docs/validation.md): local checks and the required PR checks.
 - [Elixir guide](elixir/README.md): configuration, tracker adapters, and live tests.
 - [Service specification](SPEC.md): the language-independent behavior contract.
