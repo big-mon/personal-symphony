@@ -1,136 +1,46 @@
 ---
 name: push
-description:
-  Push current branch changes to origin and create or update the corresponding
-  pull request; use when asked to push, publish updates, or create pull request.
+description: Push the current branch and create or update its pull request; use for publishing changes or opening a PR.
 ---
 
 # Push
 
-## Prerequisites
+1. Confirm the branch, configured `origin`, and existing authorized GitHub auth
+   (`gh auth status`). Follow [validation](../../../docs/validation.md) for the
+   entire PR scope, including local changes; record commands, results, and any
+   non-applicable gate. Reuse passed checks while their inputs remain unchanged.
+2. Push with `git push -u origin HEAD`. Handle failures below before retrying.
+3. Inspect the branch's PR with `gh pr view`. Update an open PR; create one if
+   absent. A closed/merged PR requires a new branch and PR. Treat API/auth errors
+   as failures, not evidence that no PR exists.
+4. Write the title and body for the full current diff, using
+   [the PR template](../../../.github/pull_request_template.md). Fill all sections,
+   replace placeholders, and preserve required bullets/checkboxes. Reconsider
+   both title and body after scope changes.
+5. Validate the body file before publication with the
+   [standalone PR validator](../../../elixir/AGENTS.md#pr-requirements).
+   It needs the Elixir/Erlang runtime from `elixir/mise.toml`, but no project
+   dependencies or build; the distributed binary does not supply that runtime.
 
-- `gh` CLI is installed and available in `PATH`.
-- `gh auth status` succeeds for GitHub operations in this repo.
+   Use `gh pr create --title <title> --body-file <file>` or
+   `gh pr edit --title <title> --body-file <file>`. Read back the published body
+   and validate it again if it differs. Return the URL from
+   `gh pr view --json url -q .url`.
 
-## Goals
+## Failures
 
-- Push current branch changes to `origin` safely.
-- Create a PR if none exists for the branch, otherwise update the existing PR.
-- Keep branch history clean when remote has moved.
-
-## Related Skills
-
-- `pull`: use this when push is rejected or sync is not clean (non-fast-forward,
-  merge conflict risk, or stale branch).
-
-## Steps
-
-1. Identify current branch and confirm remote state. For local `git add`/`commit`
-   failures, distinguish sandbox/OS write denial from authentication or network
-   failure; inspect the workspace and `git rev-parse --absolute-git-dir` read-only.
-2. Follow `docs/validation.md` to select validation from the whole change scope.
-   Run missing applicable checks before pushing; reuse passed local results when
-   their inputs have not changed. Record non-applicable full validation explicitly.
-3. Push branch to `origin` with upstream tracking if needed, using whatever
-   remote URL is already configured.
-4. If push is not clean/rejected:
-   - If the failure is a non-fast-forward or sync problem, run the `pull`
-     skill to merge `origin/main`, resolve conflicts, and rerun validation.
-   - Push again; use `--force-with-lease` only when history was rewritten.
-   - If the failure is due to auth, permissions, or workflow restrictions on
-     the configured remote, stop and surface the exact error instead of
-     rewriting remotes or switching protocols as a workaround.
-   - The same stop rule applies to local Git metadata write denial. Do not move
-     `.git`, disable the sandbox, switch credentials, or create commits via the
-     GitHub API to bypass it. Read-only checks of existing authorized auth and the
-     configured remote remain allowed.
-   - Record the command, exact error, workspace/gitdir, effective permissions and
-     diagnostics in the existing workpad; hand off to `Human Review` as blocked.
-     Do not claim commit/push or PR creation succeeded.
-
-5. Ensure a PR exists for the branch:
-   - If no PR exists, create one.
-   - If a PR exists and is open, update it.
-   - If branch is tied to a closed/merged PR, create a new branch + PR.
-   - Write a proper PR title that clearly describes the change outcome
-   - For branch updates, explicitly reconsider whether current PR title still
-     matches the latest scope; update it if it no longer does.
-6. Write/update PR body explicitly using `.github/pull_request_template.md`:
-   - Fill every section with concrete content for this change.
-   - Replace all placeholder comments (`<!-- ... -->`).
-   - Keep bullets/checkboxes where template expects them.
-   - If PR already exists, refresh body content so it reflects the total PR
-     scope (all intended work on the branch), not just the newest commits,
-     including newly added work, removed work, or changed approach.
-   - Do not reuse stale description text from earlier iterations.
-7. Validate PR body with the standalone command below and fix all reported issues.
-   It requires the Elixir/Erlang runtime from `elixir/mise.toml`, but no Hex,
-   Rebar, Symphony dependencies or build. The distributed binary does not supply
-   this development runtime.
-8. Reply with the PR URL from `gh pr view`.
-
-## Commands
-
-```sh
-# Identify branch
-branch=$(git branch --show-current)
-
-# Inspect the full PR scope; also inspect staged/unstaged and untracked files.
-git diff --name-status --no-renames origin/main...HEAD
-git status --short
-git diff --check
-# Run the applicable checks from docs/validation.md.
-# Full gate only for source/dependencies/validation infrastructure/unknown paths:
-# make -C elixir all
-
-# Initial push: respect the current origin remote.
-git push -u origin HEAD
-
-# If that failed because the remote moved, use the pull skill. After
-# pull-skill resolution and re-validation, retry the normal push:
-git push -u origin HEAD
-
-# If the configured remote rejects the push for auth, permissions, or workflow
-# restrictions, stop and surface the exact error.
-
-# Only if history was rewritten locally:
-git push --force-with-lease origin HEAD
-
-# Ensure a PR exists (create only if missing)
-pr_state=$(gh pr view --json state -q .state 2>/dev/null || true)
-if [ "$pr_state" = "MERGED" ] || [ "$pr_state" = "CLOSED" ]; then
-  echo "Current branch is tied to a closed PR; create a new branch + PR." >&2
-  exit 1
-fi
-
-# Write a clear, human-friendly title that summarizes the shipped change.
-pr_title="<clear PR title written for this change>"
-if [ -z "$pr_state" ]; then
-  gh pr create --title "$pr_title"
-else
-  # Reconsider title on every branch update; edit if scope shifted.
-  gh pr edit --title "$pr_title"
-fi
-
-# Write/edit PR body to match .github/pull_request_template.md before validation.
-# Example workflow:
-# 1) open the template and draft body content for this PR
-# 2) gh pr edit --body-file /tmp/pr_body.md
-# 3) for branch updates, re-check that title/body still match current diff
-
-tmp_pr_body=$(mktemp)
-gh pr view --json body -q .body > "$tmp_pr_body"
-(cd elixir && mise exec -- elixir -r lib/mix/tasks/pr_body.check.ex -e 'Mix.start(); Mix.Task.run("pr_body.check", System.argv())' -- --file "$tmp_pr_body")
-rm -f "$tmp_pr_body"
-
-# Show PR URL for the reply
-gh pr view --json url -q .url
-```
-
-## Notes
-
-- Do not use `--force`; only use `--force-with-lease` as the last resort.
-- Distinguish sync problems from remote auth/permission problems:
-  - Use the `pull` skill for non-fast-forward or stale-branch issues.
-  - Surface auth, permissions, or workflow restrictions directly instead of
-    changing remotes or protocols.
+- Non-fast-forward or stale branch: use [pull](../pull/SKILL.md), validate changed
+  inputs, then retry the normal push. Use `--force-with-lease` only as a last
+  resort after an authorized history rewrite; never use `--force`.
+- Auth, permissions, workflow restrictions, or local Git metadata write denial:
+  stop the failed operation and report the exact error. For local denial, inspect
+  the workspace and `git rev-parse --absolute-git-dir` read-only to distinguish
+  sandbox/OS policy from auth/network failures.
+- Record the command, error, workspace/gitdir, effective permissions, and
+  diagnostics in the existing workpad; hand off to `Human Review` as blocked.
+  Report commit/push/PR creation only when confirmed successful.
+- Existing authorized auth checks and ordinary Git synchronization remain
+  allowed. Never bypass denial by changing remotes/protocols/credentials,
+  relocating `.git`, disabling sandboxing, or creating commits through the API.
+  For an explicitly authorized runtime permissions investigation, read
+  [Git permissions](../../../docs/git-permissions.md).

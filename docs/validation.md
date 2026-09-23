@@ -48,8 +48,8 @@ existing validator directly with Elixir. It still needs the Elixir/Erlang runtim
 from `elixir/mise.toml`, but does not install Hex, Rebar or Symphony dependencies,
 or build the project.
 
-`workflow_dispatch` forces the full gate without path classification. After this
-workflow is merged, use the Actions **Run workflow** control or:
+`workflow_dispatch` forces the full gate without path classification. Use the
+Actions **Run workflow** control or:
 
 ```sh
 gh workflow run make-all.yml --ref <branch>
@@ -66,16 +66,11 @@ Keep the workflow trigger unfiltered so required checks cannot remain pending du
 to path filtering. See [GitHub's required-check guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)
 and [paths-filter behavior](https://github.com/dorny/paths-filter/tree/v3).
 
-## Apply to the running Symphony after human merge
+## Runtime workflow
 
-This repository's `elixir/WORKFLOW.md` is a template; editing it does not update the
-external WORKFLOW used by the installed binary. After human review and merge,
-update the runtime WORKFLOW's validation instructions to use this policy from the
-issue checkout: scope-based local gates, reuse of still-valid results, and the two
-actual CI check names above. Review the live prompt diff and validate its YAML and
-rendering using the normal operational procedure. Keep the live tracker settings,
-workspace/hooks, model, billing, concurrency and human merge policy intact.
-
-Do not apply these changes to the live WORKFLOW before merge to bypass this PR's
-existing validation. This PR changes CI infrastructure and itself requires full
-validation. Historical M0–M6 acceptance criteria and evidence remain unchanged.
+`elixir/WORKFLOW.md` is a template. After human review and merge, apply validation
+instruction changes to the installed binary's external WORKFLOW using the issue
+checkout's policy. Review the live prompt diff and validate YAML/rendering with
+the normal operational procedure. Preserve tracker settings, workspace/hooks,
+model, billing, concurrency, and human merge policy. Repository edits alone do
+not update the running service.
