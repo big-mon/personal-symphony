@@ -5,38 +5,17 @@ work instead of supervising coding agents.
 
 [![Symphony demo video preview](.github/media/symphony-demo-poster.jpg)](https://player.vimeo.com/video/1186371009?h=5626e4b899)
 
-_In this [demo video](https://player.vimeo.com/video/1186371009?h=5626e4b899), Symphony monitors a Linear board for work and spawns agents to handle the tasks. The agents complete the tasks and provide proof of work: CI status, PR review feedback, complexity analysis, and walkthrough videos. When accepted, the agents land the PR safely. Engineers do not need to supervise Codex; they can manage the work at a higher level._
+The demo shows agents taking work from a Linear board and producing PRs with
+validation evidence.
 
 > [!WARNING]
 > Symphony is a low-key engineering preview for testing in trusted environments.
 
-## Running Symphony
+## Running this fork
 
-### Requirements
-
-Symphony works best in codebases that have adopted
-[harness engineering](https://openai.com/index/harness-engineering/). Symphony is the next step --
-moving from managing coding agents to managing work that needs to get done.
-
-### Option 1. Make your own
-
-Tell your favorite coding agent to build Symphony in a programming language of your choice:
-
-> Implement Symphony according to the following spec:
-> https://github.com/openai/symphony/blob/main/SPEC.md
-
-### Option 2. Use our experimental reference implementation
-
-Check out [elixir/README.md](elixir/README.md) for instructions on how to set up your environment
-and run the Elixir-based Symphony implementation. You can also ask your favorite coding agent to
-help with the setup:
-
-> Set up Symphony for my repository based on
-> https://github.com/openai/symphony/blob/main/elixir/README.md
-
-For the `big-mon/personal-symphony` fork, follow the same
-[Elixir setup](elixir/README.md) and adjust these fork-specific values in your runtime copy of
-`WORKFLOW.md`:
+Follow the [Elixir setup](elixir/README.md), then use these `big-mon/personal-symphony`
+values in your runtime copy of `WORKFLOW.md`. The repository's `elixir/WORKFLOW.md`
+is a template; editing it does not update the running service.
 
 ```yaml
 tracker:
@@ -63,7 +42,11 @@ to docs or the repository. In this fork's runtime workflow body, replace the inh
 and `land` instructions with the fork policy: Codex owns implementation, validation, PR creation,
 and handoff to `Human Review`; humans own PR merges and post-merge completion.
 
----
+## Project guides
+
+- [Validation](docs/validation.md): select local checks and verify current-head CI.
+- [Git permissions](docs/git-permissions.md): diagnose write denials and scope an authorized runtime test.
+- [Service specification](SPEC.md): language-independent contract for implementations.
 
 ## License
 

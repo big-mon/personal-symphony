@@ -12,7 +12,9 @@ description: Cut a Symphony release by bumping the committed version, landing it
 3. Update `elixir/mix.exs` so `version: "X.Y.Z"` matches the intended tag.
    Search the old version and change other files only when they are true
    release-version sources, not examples.
-4. Run `make -C elixir all`, then commit, push, create a PR, and land it.
+4. Run `make -C elixir all`, then commit, push, and create a PR. Follow
+   [land](../land/SKILL.md) for review and human merge handoff; continue only
+   after the version PR is merged.
 5. Fetch the merged `main` commit. Verify its `mix.exs` version, then create an
    annotated tag on that exact commit:
 
