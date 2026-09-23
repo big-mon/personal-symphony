@@ -130,6 +130,13 @@ defmodule SymphonyElixir.CoreTest do
     assert String.trim(prompt) != ""
     assert is_binary(Config.workflow_prompt())
     assert Config.workflow_prompt() == prompt
+
+    assert {:ok,
+            %{
+              approval_policy: "never",
+              thread_sandbox: "danger-full-access",
+              turn_sandbox_policy: %{"type" => "dangerFullAccess"}
+            }} = Config.codex_runtime_settings()
   end
 
   test "linear api token resolves from LINEAR_API_KEY env var" do

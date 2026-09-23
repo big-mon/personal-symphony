@@ -17,11 +17,10 @@ description: Push the current branch and create or update its pull request; use 
    [the PR template](../../../.github/pull_request_template.md). Fill all sections,
    replace placeholders, and preserve required bullets/checkboxes. Reconsider
    both title and body after scope changes.
-5. Validate the body file before publication:
-
-   ```sh
-   (cd elixir && mix pr_body.check --file '<absolute-body-file>')
-   ```
+5. Validate the body file before publication with the
+   [standalone PR validator](../../../elixir/AGENTS.md#pr-requirements).
+   It needs the Elixir/Erlang runtime from `elixir/mise.toml`, but no project
+   dependencies or build; the distributed binary does not supply that runtime.
 
    Use `gh pr create --title <title> --body-file <file>` or
    `gh pr edit --title <title> --body-file <file>`. Read back the published body
