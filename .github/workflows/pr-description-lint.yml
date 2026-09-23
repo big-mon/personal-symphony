@@ -20,7 +20,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up mise tools
+      - name: Set up Elixir runtime
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
           install: true
@@ -31,8 +31,5 @@ jobs:
         env:
           PR_BODY_JSON: ${{ toJson(github.event.pull_request.body) }}
         run: |
-          mix local.hex --force
-          mix local.rebar --force
-          mix deps.get
           printf '%s' "$PR_BODY_JSON" | jq -r '.' > /tmp/pr_body.md
-          mix pr_body.check --file /tmp/pr_body.md
+          mise exec -- elixir -r lib/mix/tasks/pr_body.check.ex -e 'Mix.start(); Mix.Task.run("pr_body.check", System.argv())' -- --file /tmp/pr_body.md

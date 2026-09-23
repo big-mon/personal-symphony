@@ -67,10 +67,12 @@ mix specs.check
 ## PR Requirements
 
 - PR body must follow `../.github/pull_request_template.md` exactly.
-- Validate PR body locally when needed:
+- Validate PR body locally from `elixir/` when needed. This requires the
+  Elixir/Erlang runtime in `mise.toml`, but no Hex, Rebar, project dependencies or
+  build; the distributed Symphony binary does not supply this runtime:
 
 ```bash
-mix pr_body.check --file /path/to/pr_body.md
+mise exec -- elixir -r lib/mix/tasks/pr_body.check.ex -e 'Mix.start(); Mix.Task.run("pr_body.check", System.argv())' -- --file /path/to/pr_body.md
 ```
 
 ## Docs Update Policy

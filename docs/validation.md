@@ -7,7 +7,7 @@ outside it requires full validation. Never classify by file extension alone.
 | Changes | Required validation |
 | --- | --- |
 | README, SPEC, guides under `docs/` or `elixir/docs/`, license/notice, PNG/JPG/MP4 under `.github/media/` | Review content, links/media and `git diff --check` |
-| `elixir/AGENTS.md`, `.codex/skills/**/SKILL.md`, PR template | Diff check, review syntax and walk through the affected procedure; validate PR bodies with `mix pr_body.check` when applicable |
+| `elixir/AGENTS.md`, `.codex/skills/**/SKILL.md`, PR template | Diff check, review syntax and walk through the affected procedure; validate PR bodies with the [standalone command](../elixir/AGENTS.md#pr-requirements) when applicable |
 | `elixir/WORKFLOW.md` | Diff check, review YAML front matter, prompt and changed hook/agent procedure; `cd elixir && mix deps.get && mix test test/symphony_elixir/core_test.exs` |
 | Everything else, including `elixir/lib/`, `test/` (even Markdown fixtures), `priv/`, dependencies, tool/build/test config, hooks/scripts, GitHub Actions and the scope filter itself | `make -C elixir all`, plus syntax/behavior checks for changed scripts or Actions |
 
@@ -43,7 +43,10 @@ The workflow always starts on pull requests and pushes to `main`; the existing
 `make-all` job name stays unchanged. It always checks the diff and reports the
 selected scope in the run summary, then conditionally installs Elixir and runs
 the applicable checks. A classification/check failure fails that same job. Only
-non-applicable steps are skipped. The separate PR description check is unchanged.
+non-applicable steps are skipped. The separate PR description check loads the
+existing validator directly with Elixir. It still needs the Elixir/Erlang runtime
+from `elixir/mise.toml`, but does not install Hex, Rebar or Symphony dependencies,
+or build the project.
 
 `workflow_dispatch` forces the full gate without path classification. After this
 workflow is merged, use the Actions **Run workflow** control or:
