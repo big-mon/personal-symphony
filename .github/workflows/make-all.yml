@@ -59,6 +59,11 @@ jobs:
         working-directory: .
         run: bash .github/tests/validation-paths.sh
 
+      - name: Verify repository routing workflow
+        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.full == 'true'
+        working-directory: .
+        run: python3 tests/test_repository_workflow.py
+
       - name: Set up mise tools
         if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.full == 'true' || steps.changes.outputs.workflow == 'true'
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
@@ -80,7 +85,14 @@ jobs:
 
       - name: Verify make all
         if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.full == 'true'
-        run: make all
+        run: |
+          make all
+          LINEAR_API_KEY=validation-only mix run --no-start -e '
+            SymphonyElixir.Workflow.set_workflow_file_path("../WORKFLOW.md")
+            SymphonyElixir.Config.settings!()
+            issue = %SymphonyElixir.Tracker.Issue{id: "11111111-1111-4111-8111-111111111111", identifier: "TEST-1", title: "routing"}
+            for attempt <- [nil, 2], do: SymphonyElixir.PromptBuilder.build_prompt(issue, attempt: attempt)
+          '
 
       - name: Verify WORKFLOW input and rendering
         if: github.event_name != 'workflow_dispatch' && steps.changes.outputs.full == 'false' && steps.changes.outputs.workflow == 'true'

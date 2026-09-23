@@ -1,4 +1,12 @@
-# Codex permissions for trusted Symphony runs
+# Codex permissions for Symphony runs
+
+The root [`WORKFLOW.md`](../WORKFLOW.md) uses `workspace-write` / `never`,
+with the session cwd at the issue workspace and the checkout in `repo/`.
+Keep that outer cwd: [protected paths](https://learn.chatgpt.com/docs/agent-approvals-security#protected-paths-in-writable-roots)
+are relative to writable roots; starting the session inside `repo/` changes the layout.
+Permission failures use the blocked-access procedure below.
+
+## Full-access profile: elixir/WORKFLOW.md
 
 This fork's `elixir/WORKFLOW.md` explicitly selects full access for trusted,
 unattended work. Codex can update Git metadata and repository `.codex` files
@@ -26,7 +34,7 @@ Omitting these fields restores the engine's sandboxed defaults, not this profile
 
 ## Apply after human merge
 
-The installed service reads `/Users/agents/.config/symphony/WORKFLOW.md`.
+The installed service reads the WORKFLOW file supplied at startup.
 Changing the repository template does not change that file or deploy the policy.
 
 1. Wait for active sessions to finish and coordinate queued work before rollout.
