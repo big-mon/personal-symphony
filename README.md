@@ -15,7 +15,7 @@ Linear の課題を受け取り、Codex が実装・検証・PR作成まで進�
 [配布バイナリ](https://github.com/big-mon/personal-symphony/releases)やソースからの起動は[Elixirガイド](elixir/README.md)を参照します。
 
 Linear の `Repository` 子ラベルで、`~/Repos/<ラベル名>` にあるリポジトリを選びます。
-Codex はそのoriginから課題専用のcloneを作り、PRを作成します。登録元のローカルリポジトリは変更しません。
+起動前のホスト処理がそのoriginから課題専用のcloneを用意し、Codex が実装・PR作成を行います。登録元は変更しません。
 
 ## 開発
 

@@ -1,3 +1,4 @@
+import http.client
 import json
 import os
 from pathlib import Path
@@ -6,10 +7,68 @@ import subprocess
 import sys
 import uuid
 
+QUERY = """
+query RepositoryLabels($id: String!, $cursor: String) {
+  issue(id: $id) {
+    id identifier updatedAt
+    labels(first: 50, after: $cursor, includeArchived: true) {
+      nodes { id name isGroup archivedAt parent { id name isGroup archivedAt } }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+}
+"""
+
+
+class Blocked(ValueError):
+    """Only fixed, credential-free messages may be logged."""
+
 
 def require(ok, reason):
     if not ok:
-        raise ValueError(reason)
+        raise Blocked(reason)
+
+
+def linear_page(issue_id, cursor):
+    token = os.environ.get("LINEAR_API_KEY")
+    require(bool(token), "LINEAR_API_KEY is missing")
+    connection = http.client.HTTPSConnection("api.linear.app", timeout=30)
+    try:
+        connection.request("POST", "/graphql", json.dumps({
+            "query": QUERY, "variables": {"id": issue_id, "cursor": cursor}}),
+            {"Authorization": token, "Content-Type": "application/json"})
+        response = connection.getresponse()
+        require(response.status == 200, "Linear HTTP request failed")
+        return json.loads(response.read())
+    finally:
+        connection.close()
+
+
+def live_snapshot(expected_id=None):
+    identifier = Path.cwd().name
+    require(re.fullmatch(r"[A-Z][A-Z0-9]*-[1-9][0-9]*", identifier),
+            "workspace name must be a Linear identifier (TEAM-123)")
+    if expected_id is not None:
+        uuid.UUID(expected_id)
+    snapshot = {"issue_id": expected_id, "pages": []}
+    cursor, seen = None, set()
+    while True:
+        response = linear_page(snapshot["issue_id"] or identifier, cursor)
+        require(not response.get("errors"), "GraphQL errors; snapshot rejected")
+        issue = response["data"]["issue"]
+        require(issue["identifier"] == identifier, "Linear identifier differs from workspace")
+        uuid.UUID(issue["id"])
+        if snapshot["issue_id"] is None:
+            snapshot["issue_id"] = issue["id"]
+        require(issue["id"] == snapshot["issue_id"], "Linear issue UUID changed")
+        snapshot["pages"].append({"cursor": cursor, "response": response})
+        info = issue["labels"]["pageInfo"]
+        require(type(info["hasNextPage"]) is bool, "missing pagination status")
+        if not info["hasNextPage"]:
+            return snapshot
+        cursor = info["endCursor"]
+        require(isinstance(cursor, str) and cursor and cursor not in seen, "invalid label cursor")
+        seen.add(cursor)
 
 
 def git(cwd, *args):
@@ -108,11 +167,26 @@ def bootstrap(snapshot, issue_id):
     return binding
 
 
-if __name__ == "__main__":
+def main(args):
     try:
-        require(len(sys.argv) == 2, "expected dispatched issue UUID argument")
-        bootstrap(json.load(sys.stdin), sys.argv[1])
-    except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as error:
+        require(len(args) <= 1, "expected optional dispatched issue UUID argument")
+        snapshot = live_snapshot(args[0] if args else None)
+        bootstrap(snapshot, snapshot["issue_id"])
+        Path(".repository-blocked.txt").unlink(missing_ok=True)
+        return 0
+    except (ValueError, KeyError, TypeError, AttributeError, OSError,
+            http.client.HTTPException, subprocess.SubprocessError) as error:
         # Never echo label values, arbitrary URLs, Git stderr or credentials.
-        print("Repository gate blocked: " + (str(error) if type(error) is ValueError else type(error).__name__), file=sys.stderr)
-        sys.exit(1)
+        message = "Repository gate blocked: " + (str(error) if isinstance(error, Blocked) else type(error).__name__)
+        print(message, file=sys.stderr)
+        try:
+            fd = os.open(".repository-blocked.txt", os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, "w") as output:
+                output.write(message + "\n")
+        except OSError:
+            pass  # stderr still records the failure if the workspace is unwritable.
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

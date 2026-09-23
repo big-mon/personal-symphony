@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/repository_bootstrap.py"
 sys.path.insert(0, str(SCRIPT.parent))
@@ -43,7 +43,7 @@ class Routing(unittest.TestCase):
                      "commit", "-m", "fixture")
             REAL_GIT(source, "remote", "add", "origin", f"https://github.com/example/{name}.git")
             self.sources.append(source)
-        self.workspace = self.root / "workspace"
+        self.workspace = self.root / "TEST-1"
         self.workspace.mkdir()
         os.chdir(self.workspace)
 
@@ -67,7 +67,7 @@ class Routing(unittest.TestCase):
                  "isGroup": False, "archivedAt": None,
                  "parent": {"id": "group", "name": "Repository", "isGroup": True, "archivedAt": None}}
         return {"issue_id": ISSUE_ID, "pages": [{"cursor": None, "response": {"data": {"issue": {
-            "id": ISSUE_ID, "updatedAt": "2026-01-01T00:00:00Z", "state": {"name": "Todo"},
+            "id": ISSUE_ID, "identifier": "TEST-1", "updatedAt": "2026-01-01T00:00:00Z", "state": {"name": "Todo"},
             "labels": {"nodes": [label], "pageInfo": {"hasNextPage": False, "endCursor": "last"}}}}}}]}
 
     def labels(self, snapshot):
@@ -105,7 +105,7 @@ class Routing(unittest.TestCase):
             self.run_gate(snapshot)
         self.assertFalse((self.workspace / "repo").exists())
         self.assertFalse((self.workspace / ".repository-binding.json").exists())
-        for args in ([], ["not-a-uuid"], [ISSUE_ID]):
+        for args in (["not-a-uuid"], [ISSUE_ID, ISSUE_ID]):
             result = subprocess.run([sys.executable, str(SCRIPT), *args],
                                     input=json.dumps(snapshot), text=True, capture_output=True)
             self.assertEqual(1, result.returncode)
@@ -285,12 +285,97 @@ class Routing(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "escapes"):
             self.run_gate(snapshot)
 
-    def test_cli_redacts_untrusted_input(self):
-        snapshot = self.snapshot()
-        snapshot["pages"][0]["response"]["errors"] = [{"message": "SECRET_CANARY"}]
-        result = subprocess.run([sys.executable, str(SCRIPT), ISSUE_ID], input=json.dumps(snapshot), text=True, capture_output=True)
+    def test_host_fetches_all_pages_then_clones_and_reuses(self):
+        first = self.snapshot()["pages"][0]["response"]
+        last = copy.deepcopy(first)
+        first["data"]["issue"]["labels"] = {
+            "nodes": [], "pageInfo": {"hasNextPage": True, "endCursor": "page2"}}
+        with patch.object(routing, "linear_page", side_effect=[first, last]) as fetch:
+            snapshot = routing.live_snapshot()
+            self.assertEqual([("TEST-1", None), (ISSUE_ID, "page2")],
+                             [call.args for call in fetch.call_args_list])
+            self.run_gate(snapshot)
+        (self.workspace / "repo/unfinished.txt").write_text("keep")
+        with patch.object(routing, "linear_page", return_value=last), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(0, routing.main([ISSUE_ID]))
+        self.assertEqual("keep", (self.workspace / "repo/unfinished.txt").read_text())
+
+    def test_host_rejects_bad_pages_before_binding(self):
+        base = self.snapshot()["pages"][0]["response"]
+        cases = []
+        for field, value in (("identifier", "OTHER-1"), ("id", "SECRET_NOT_UUID")):
+            bad = copy.deepcopy(base)
+            bad["data"]["issue"][field] = value
+            cases.append([bad])
+        cases += [[{"data": {"issue": None}}], [{"data": base["data"], "errors": [{"message": "SECRET_CANARY"}]}]]
+        first = copy.deepcopy(base)
+        first["data"]["issue"]["labels"]["pageInfo"] = {"hasNextPage": True, "endCursor": "next"}
+        cases.append([first, first])  # repeated cursor
+        changed = copy.deepcopy(base)
+        changed["data"]["issue"]["updatedAt"] = "changed"
+        cases.append([first, changed])
+        changed_id = copy.deepcopy(base)
+        changed_id["data"]["issue"]["id"] = "22222222-2222-4222-8222-222222222222"
+        cases += [[first, changed_id], [base, OSError("SECRET_NETWORK_FAILURE")]]
+        # The failing second page must never be treated as an empty label list.
+        cases[-1][0] = first
+        for responses in cases:
+            output = io.StringIO()
+            with self.subTest(responses=responses), patch.object(routing, "linear_page", side_effect=responses), contextlib.redirect_stderr(output):
+                self.assertEqual(1, routing.main([]))
+            self.assertNotIn("SECRET", output.getvalue())
+            self.assertEqual(output.getvalue(), (self.workspace / ".repository-blocked.txt").read_text())
+            self.assertFalse((self.workspace / ".repository-binding.json").exists())
+            self.assertFalse((self.workspace / "repo").exists())
+
+    def test_host_uuid_and_repository_changes_preserve_binding(self):
+        with patch.object(routing, "linear_page", return_value=self.snapshot()["pages"][0]["response"]), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(0, routing.main([]))
+        marker = (self.workspace / ".repository-binding.json").read_bytes()
+        (self.workspace / "repo/unfinished.txt").write_text("keep")
+        different = self.snapshot()["pages"][0]["response"]
+        different["data"]["issue"]["id"] = "22222222-2222-4222-8222-222222222222"
+        for response, args in ((different, []), (different, [ISSUE_ID]),
+                               (self.snapshot(1)["pages"][0]["response"], [])):
+            with patch.object(routing, "linear_page", return_value=response), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(1, routing.main(args))
+            self.assertEqual(marker, (self.workspace / ".repository-binding.json").read_bytes())
+            self.assertEqual("keep", (self.workspace / "repo/unfinished.txt").read_text())
+
+    def test_http_errors_and_credentials_are_not_logged(self):
+        response = Mock(status=200)
+        response.read.return_value = json.dumps(self.snapshot()["pages"][0]["response"]).encode()
+        connection = Mock()
+        connection.getresponse.return_value = response
+        with patch.dict(os.environ, {"LINEAR_API_KEY": "SECRET_CANARY"}), patch.object(routing.http.client, "HTTPSConnection", return_value=connection):
+            self.assertEqual(ISSUE_ID, routing.live_snapshot()["issue_id"])
+            args = connection.request.call_args.args
+            self.assertEqual("TEST-1", json.loads(args[2])["variables"]["id"])
+            self.assertEqual("SECRET_CANARY", args[3]["Authorization"])
+            for status, body in ((401, b"SECRET_CANARY"), (429, b"SECRET_CANARY"),
+                                 (503, b"SECRET_CANARY"), (302, b"SECRET_CANARY"),
+                                 (200, b"SECRET_INVALID_JSON")):
+                response.status, response.read.return_value = status, body
+                output = io.StringIO()
+                with contextlib.redirect_stderr(output):
+                    self.assertEqual(1, routing.main([]))
+                self.assertNotIn("SECRET", output.getvalue())
+            connection.close.assert_called()
+        with patch.dict(os.environ, {}, clear=True), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(1, routing.main([]))
+        self.assertFalse((self.workspace / "repo").exists())
+
+    def test_cli_missing_credentials_and_invalid_workspace_fail_closed(self):
+        env = os.environ.copy()
+        env.pop("LINEAR_API_KEY", None)
+        result = subprocess.run([sys.executable, str(SCRIPT)], env=env, text=True, capture_output=True)
         self.assertEqual(1, result.returncode)
-        self.assertNotIn("SECRET_CANARY", result.stderr + result.stdout)
+        self.assertIn("LINEAR_API_KEY is missing", result.stderr)
+        os.chdir(self.root)
+        with patch.object(routing, "linear_page") as fetch, contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(1, routing.main([]))
+            fetch.assert_not_called()
+
 
 
 if __name__ == "__main__":
