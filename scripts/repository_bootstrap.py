@@ -14,7 +14,7 @@ def require(ok, reason):
 
 def git(cwd, *args):
     result = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True,
-                            text=True, timeout=120)
+                            text=True, timeout=900 if args[0] == "clone" else 120)
     require(result.returncode == 0, "Git operation failed (details withheld)")
     return result.stdout.strip()
 
@@ -32,9 +32,9 @@ def origin(cwd):
     return fetch, f"{owner}/{repo}"
 
 
-def bootstrap(snapshot):
-    issue_id = snapshot["issue_id"]
+def bootstrap(snapshot, issue_id):
     uuid.UUID(issue_id)
+    require(snapshot["issue_id"] == issue_id, "snapshot does not match dispatched issue")
     pages = snapshot["pages"]
     require(bool(pages), "missing label pages")
     cursor, version, nodes, seen = None, None, [], set()
@@ -110,7 +110,8 @@ def bootstrap(snapshot):
 
 if __name__ == "__main__":
     try:
-        bootstrap(json.load(sys.stdin))
+        require(len(sys.argv) == 2, "expected dispatched issue UUID argument")
+        bootstrap(json.load(sys.stdin), sys.argv[1])
     except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as error:
         # Never echo label values, arbitrary URLs, Git stderr or credentials.
         print("Repository gate blocked: " + (str(error) if type(error) is ValueError else type(error).__name__), file=sys.stderr)

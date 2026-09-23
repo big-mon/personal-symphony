@@ -16,6 +16,7 @@ sys.path.insert(0, str(SCRIPT.parent))
 import repository_bootstrap as routing
 
 REAL_GIT = routing.git
+ISSUE_ID = "11111111-1111-4111-8111-111111111111"
 
 
 class Routing(unittest.TestCase):
@@ -65,9 +66,8 @@ class Routing(unittest.TestCase):
         label = {"id": f"label-{index}", "name": self.sources[index].name,
                  "isGroup": False, "archivedAt": None,
                  "parent": {"id": "group", "name": "Repository", "isGroup": True, "archivedAt": None}}
-        issue_id = "11111111-1111-4111-8111-111111111111"
-        return {"issue_id": issue_id, "pages": [{"cursor": None, "response": {"data": {"issue": {
-            "id": issue_id, "updatedAt": "2026-01-01T00:00:00Z", "state": {"name": "Todo"},
+        return {"issue_id": ISSUE_ID, "pages": [{"cursor": None, "response": {"data": {"issue": {
+            "id": ISSUE_ID, "updatedAt": "2026-01-01T00:00:00Z", "state": {"name": "Todo"},
             "labels": {"nodes": [label], "pageInfo": {"hasNextPage": False, "endCursor": "last"}}}}}}]}
 
     def labels(self, snapshot):
@@ -75,7 +75,7 @@ class Routing(unittest.TestCase):
 
     def run_gate(self, snapshot):
         with contextlib.redirect_stdout(io.StringIO()):
-            return routing.bootstrap(snapshot)
+            return routing.bootstrap(snapshot, ISSUE_ID)
 
     def test_two_targets_retry_and_changed_label(self):
         before = [REAL_GIT(s, "status", "--porcelain") for s in self.sources]
@@ -95,6 +95,44 @@ class Routing(unittest.TestCase):
         self.assertNotEqual(first["repository"], second["repository"])
         self.assertEqual("beta", (second_workspace / "repo/README.md").read_text())
         self.assertEqual(before, [REAL_GIT(s, "status", "--porcelain") for s in self.sources])
+
+    def test_other_issue_snapshot_cannot_bind_or_replace_workspace(self):
+        snapshot = self.snapshot(1)
+        other_id = "22222222-2222-4222-8222-222222222222"
+        snapshot["issue_id"] = other_id
+        snapshot["pages"][0]["response"]["data"]["issue"]["id"] = other_id
+        with self.assertRaisesRegex(ValueError, "dispatched issue"):
+            self.run_gate(snapshot)
+        self.assertFalse((self.workspace / "repo").exists())
+        self.assertFalse((self.workspace / ".repository-binding.json").exists())
+        for args in ([], ["not-a-uuid"], [ISSUE_ID]):
+            result = subprocess.run([sys.executable, str(SCRIPT), *args],
+                                    input=json.dumps(snapshot), text=True, capture_output=True)
+            self.assertEqual(1, result.returncode)
+            self.assertFalse((self.workspace / "repo").exists())
+            self.assertFalse((self.workspace / ".repository-binding.json").exists())
+        self.run_gate(self.snapshot())
+        marker = self.workspace / ".repository-binding.json"
+        before = marker.read_bytes()
+        with self.assertRaisesRegex(ValueError, "dispatched issue"):
+            self.run_gate(snapshot)
+        self.assertEqual(before, marker.read_bytes())
+
+    def test_slow_clone_has_a_longer_budget_than_metadata(self):
+        run = subprocess.run
+        budgets = {}
+        def slow_clone(command, **kwargs):
+            operation = command[3]
+            budgets[operation] = kwargs["timeout"]
+            # Simulate a clone needing 121 seconds without a wall-clock wait.
+            if operation == "clone" and kwargs["timeout"] < 121:
+                raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+            return run(command, **kwargs)
+        with patch.object(routing.subprocess, "run", side_effect=slow_clone):
+            self.run_gate(self.snapshot())
+        self.assertTrue((self.workspace / "repo/.git").is_dir())
+        self.assertEqual(120, budgets["remote"])
+        self.assertLessEqual(budgets["clone"], 900)
 
     def test_missing_ambiguous_invalid_and_injection(self):
         base = self.snapshot()
@@ -250,7 +288,7 @@ class Routing(unittest.TestCase):
     def test_cli_redacts_untrusted_input(self):
         snapshot = self.snapshot()
         snapshot["pages"][0]["response"]["errors"] = [{"message": "SECRET_CANARY"}]
-        result = subprocess.run([sys.executable, str(SCRIPT)], input=json.dumps(snapshot), text=True, capture_output=True)
+        result = subprocess.run([sys.executable, str(SCRIPT), ISSUE_ID], input=json.dumps(snapshot), text=True, capture_output=True)
         self.assertEqual(1, result.returncode)
         self.assertNotIn("SECRET_CANARY", result.stderr + result.stdout)
 

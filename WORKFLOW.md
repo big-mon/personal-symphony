@@ -79,7 +79,8 @@ Do not use the prompt's `issue.labels`: those names omit the parent group.
    Each subsequent entry records the actual cursor passed to that tool call.
    Preserve the full `data`/`errors` envelope, not a summary or inferred labels.
 3. From the workspace root run the installed helper:
-   `python3 "$HOME/.config/symphony/repository_bootstrap.py" < .repository-pages.json`.
+   `python3 "$HOME/.config/symphony/repository_bootstrap.py" '{{ issue.id }}' < .repository-pages.json`.
+   Use this rendered UUID unchanged, not an ID copied from the snapshot.
    The helper validates the snapshot, source and origin, binds the workspace,
    and clones/reuses `repo/`. A missing helper is a blocker; do not recreate it
    or substitute repository-provided code. Never interpolate label data into commands.
