@@ -34,6 +34,25 @@ help with the setup:
 > Set up Symphony for my repository based on
 > https://github.com/openai/symphony/blob/main/elixir/README.md
 
+For the `big-mon/personal-symphony` fork, follow the same
+[Elixir setup](elixir/README.md) and set these fork-specific values in your runtime copy of
+`WORKFLOW.md`:
+
+```yaml
+tracker:
+  provider:
+    project_slug: personal-symphony-506ccfb1912c
+hooks:
+  after_create: |
+    git clone https://github.com/big-mon/personal-symphony .
+agent:
+  max_concurrent_agents: 1
+```
+
+Pass auth through environment variables or host-side secret references; do not commit secret values
+to docs or the repository. In this fork's runtime workflow body, state that Codex owns
+implementation, validation, and handoff to `Human Review`, while humans own PR merges.
+
 ---
 
 ## License
