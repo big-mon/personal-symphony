@@ -323,6 +323,10 @@ The observability UI now runs on a minimal Phoenix stack:
 
 ## Testing
 
+Use the [shared validation policy](../docs/validation.md) to select checks from the
+change scope. Documents and operational instructions use focused validation;
+source, dependency, validation infrastructure and unknown changes require:
+
 ```bash
 make all
 ```

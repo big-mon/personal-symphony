@@ -26,7 +26,9 @@ description:
 ## Steps
 
 1. Identify current branch and confirm remote state.
-2. Run local validation (`make -C elixir all`) before pushing.
+2. Follow `docs/validation.md` to select validation from the whole change scope.
+   Run missing applicable checks before pushing; reuse passed local results when
+   their inputs have not changed. Record non-applicable full validation explicitly.
 3. Push branch to `origin` with upstream tracking if needed, using whatever
    remote URL is already configured.
 4. If push is not clean/rejected:
@@ -61,8 +63,13 @@ description:
 # Identify branch
 branch=$(git branch --show-current)
 
-# Minimal validation gate
-make -C elixir all
+# Inspect the full PR scope; also inspect staged/unstaged and untracked files.
+git diff --name-status --no-renames origin/main...HEAD
+git status --short
+git diff --check
+# Run the applicable checks from docs/validation.md.
+# Full gate only for source/dependencies/validation infrastructure/unknown paths:
+# make -C elixir all
 
 # Initial push: respect the current origin remote.
 git push -u origin HEAD

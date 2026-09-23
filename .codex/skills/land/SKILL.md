@@ -26,7 +26,8 @@ description:
 ## Steps
 
 1. Locate the PR for the current branch.
-2. Confirm the full gauntlet is green locally before any push.
+2. Confirm the applicable local validation from `docs/validation.md` passed before
+   any push. Reuse results while their inputs remain unchanged.
 3. If the working tree has uncommitted changes, commit with the `commit` skill
    and push with the `push` skill before proceeding.
 4. Check mergeability and conflicts against main.
@@ -34,7 +35,9 @@ description:
    resolve conflicts, then use the `push` skill to publish the updated branch.
 6. Ensure Codex review comments (if present) are acknowledged and any required
    fixes are handled before merging.
-7. Watch checks until complete.
+7. Watch the current-head checks described in `docs/validation.md` until complete.
+   Inspect the `make-all` scope summary; non-applicable steps may be skipped, but
+   missing/cancelled/failed jobs are not passing checks.
 8. If checks fail, pull logs, fix the issue, commit with the `commit` skill,
    push with the `push` skill, and re-run checks.
 9. When all checks are green and review feedback is addressed, squash-merge and
@@ -131,7 +134,7 @@ Exit codes:
 - Codex review jobs retry on failure and are non-blocking; use the presence of
   `## Codex Review — <persona>` issue comments (not job status) as the signal
   that review feedback is available.
-- Do not enable auto-merge; this repo has no required checks so auto-merge can
+- Do not enable auto-merge; required-check protection is not assumed, so auto-merge can
   skip tests.
 - If the remote PR branch advanced due to your own prior force-push or merge,
   avoid redundant merges; re-run the formatter locally if needed and
