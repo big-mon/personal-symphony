@@ -146,6 +146,17 @@ You are working on an issue from the configured tracker {{ issue.identifier }}.
 Title: {{ issue.title }} Body: {{ issue.description }}
 ```
 
+To let one Symphony process run up to three issues at a time, set:
+
+```yaml
+agent:
+  max_concurrent_agents: 3
+```
+
+Symphony still creates a separate workspace for each dispatched issue. The
+setting is capacity, not a guarantee: three agents run only when runnable
+tracker candidates exist and matching agent slots are free.
+
 Notes:
 
 - If a value is missing, defaults are used.
