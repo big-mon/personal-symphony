@@ -7,7 +7,8 @@ Personal Symphony は、課題管理ツールと連携してコーディング�
 
 > [!WARNING]
 > 信頼できる環境での試用を想定した実験的なソフトウェアです。
-> 付属のワークフローでは、Codex に実行ユーザーと同じファイル・ネットワークへのアクセス権を与えます。
+> ルートのラベル用ワークフローは `workspace-write` を明示します。
+> Elixir 側のテンプレートは、Codex に実行ユーザーと同じファイル・ネットワークへのアクセス権を与えます。
 > 作業ディレクトリを分けても、セキュリティ上の隔離にはなりません。実行前に[権限ガイド](docs/git-permissions.md)を確認してください。
 
 ## 作業の流れ
@@ -30,8 +31,9 @@ Elixir の実装は Linear、GitHub Issues、Jira Cloud、Asana、GitLab に対�
 ## このフォークの起動方法
 
 Git、認証済みの Codex CLI、連携する課題管理ツールの認証情報が必要です。
-付属のフックでは、認証済みの GitHub CLI（`gh`）と、`mise` で管理する Elixir の実行環境も使います。
-サービスを実行するユーザーで `gh auth status` が成功し、対象リポジトリへのpushとPRの作成・クローズができる権限を用意してください。
+Repositoryラベルを使う運用には、認証済みの GitHub CLI（`gh`）と Python 3.9 以上も必要です。
+対象リポジトリの開発環境は、clone後にそのリポジトリの手順で準備します。
+サービスを実行するユーザーで `gh auth status` が成功し、対象リポジトリへのpushとPRの作成ができる権限を用意してください。
 Git経由のpushと、非公開リポジトリをcloneする場合の認証も必要です。課題管理ツールの認証とは別に確認します。
 
 実装と設定の詳細は[Elixir ガイド（英語）](elixir/README.md)を参照してください。
@@ -49,7 +51,8 @@ mise exec -- mix build
 
 ### 課題管理ツールとワークフローを設定する
 
-`elixir/WORKFLOW.md` をチェックアウト先の外にコピーし、実行用ファイルとして使います。
+Linear の Repository ラベルで対象を選ぶ場合は、ルートの [`WORKFLOW.md`](WORKFLOW.md) をチェックアウト先の外にコピーし、実行用ファイルとして使います。
+既存の運用ファイルがある場合は、[差分適用手順](docs/repository-routing.md)に従い、丸ごと上書きしないでください。
 課題ごとの作業ディレクトリも、チェックアウト先とは別に指定してください。
 連携先に応じて、次の設定ガイドを参照します。
 [Linear](elixir/README.md#linear-adapter-profile)、
@@ -61,14 +64,15 @@ mise exec -- mix build
 実行用ワークフローでは、次の項目を設定します。
 
 - **冒頭のYAML設定**：`tracker.kind`、連携先のプロジェクトなどの対象範囲、認証情報、対応する実行対象・終了状態を指定します。認証情報は、サービスの環境変数やホスト側のシークレット参照で渡します。
-- **リポジトリ用フック**：`hooks.after_create` のclone先と、`hooks.before_remove` のPR操作先を対象リポジトリに合わせます。このフォークでは、clone先を `https://github.com/big-mon/personal-symphony` にし、削除前のMixタスクに `--repo big-mon/personal-symphony` を指定します。テンプレートやMixタスクの既定値はフォーク元を指すため、どの課題管理ツールを使う場合も変更が必要です。
+- **リポジトリの選択**：Linear の `Repository` グループから子ラベルを1つ選びます。子ラベルの説明には、登録済みローカルGitリポジトリの絶対パスだけを記載してください。Codex がその `origin` を確認し、課題専用ディレクトリの `repo/` にcloneします。固定cloneやリポジトリ依存のフックは使いません。
 - **Markdown本文のプロンプト**：テンプレートにある Linear 用ツール・スキルの指定、作業記録やコメントの操作、状態遷移、PRの紐付け手順を、連携先に合う内容へ書き換えます。`tracker.kind` を変えるだけでは、本文の指示は切り替わりません。
 
 連携先にかかわらず、Codex は実装・検証・PR作成を担当し、人間がマージと課題の完了を行います。
 テンプレートの `Merging` への分岐や `land` の実行指示も、この方針に合わせて書き換えてください。
 レビュー中は課題を終了状態にせず、エージェントの実行対象から外します。
 open/closed のような状態しか扱えない連携先では、独自のレビュー状態を追加する代わりに、`tracker.required_labels` などの対応済みフィルターで実行対象を制御します。
-下記の削除前フックは、課題が終了状態になった際に未マージのPRを閉じるため、承認した課題を完了させるのはPRのマージ後にしてください。
+Repositoryラベル用ワークフローは、終了時に課題の作業ディレクトリだけを削除し、PRを自動で閉じません。
+承認した課題は、人間がPRをマージしてから完了させてください。
 
 ### Linear の設定例（現在の運用）
 
@@ -84,14 +88,7 @@ tracker:
     - Todo
     - In Progress
     - Rework
-hooks:
-  after_create: |
-    git clone --depth 1 https://github.com/big-mon/personal-symphony .
-    if command -v mise >/dev/null 2>&1; then
-      cd elixir && mise trust && mise exec -- mix deps.get
-    fi
-  before_remove: |
-    cd elixir && mise exec -- mix workspace.before_remove --repo big-mon/personal-symphony
+hooks: {}
 agent:
   max_concurrent_agents: 1
 ```
@@ -99,7 +96,10 @@ agent:
 `LINEAR_API_KEY` はサービスの環境変数で渡します。
 この例では、レビュー待ちに `Human Review`、修正作業に `Rework`、マージ後の完了に `Done` を使います。
 これらの状態を Linear に用意し、作業ディレクトリを残すために `Human Review` は実行対象・終了状態のどちらにも含めないでください。
-本文のプロンプトにも、前述の人間によるレビュー・マージ方針を反映します。
+YAMLだけでなく、ルート `WORKFLOW.md` の Repository bootstrap と実装・PR引き渡し手順も使います。
+ラベル未指定・複数候補・不正な説明やorigin・アクセス失敗では作業を止めます。
+再試行は同じcloneを再利用しますが、対象が変わっていたら停止し、既存作業を引き継ぎません。
+説明の書式、既存cloneの扱い、検証手順は[Repositoryラベル運用](docs/repository-routing.md)を参照してください。
 
 ### サービスを起動する
 
@@ -111,10 +111,10 @@ mise exec -- ./bin/symphony /absolute/path/to/WORKFLOW.md \
 ```
 
 配布バイナリでも、同じファイルパスとフラグを指定できます。
-ただし、付属のフックを使う場合は、作業を実行するホストに Elixir の実行環境と `gh` が必要です。
+Repositoryラベル用ワークフロー自体は Elixir の開発環境を要求しません。対象リポジトリの開発に必要な場合だけ用意します。
 任意で有効にできる[Webダッシュボード](elixir/README.md#web-dashboard)では、実行中や対応待ちの課題を確認できます。
 
-リポジトリ内の `elixir/WORKFLOW.md` はテンプレートです。
+ルートの `WORKFLOW.md` は Linear の Repository ラベル用、`elixir/WORKFLOW.md` はフォーク元のテンプレートです。
 稼働中のサービスが読むのは、起動時に指定したファイルです。リポジトリを変更しただけでは、その実行用ファイルには反映されません。
 認証情報は環境変数やホスト側のシークレット参照で管理してください。
 
