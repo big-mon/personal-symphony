@@ -1,4 +1,13 @@
-# Codex permissions for trusted Symphony runs
+# Codex permissions for Symphony runs
+
+The root [`WORKFLOW.md`](../WORKFLOW.md) keeps the session cwd at the issue
+workspace and clones into `repo/`. On macOS with Symphony v0.0.3 and Codex CLI
+0.154.0, `workspace-write` / `never` passed native branch/add/commit/push,
+including reuse in a fresh session. Keep that outer cwd: [protected paths](https://learn.chatgpt.com/docs/agent-approvals-security#protected-paths-in-writable-roots)
+are relative to writable roots; starting the session inside `repo/` changes the layout.
+Permission failures still use the blocked-access procedure below.
+
+## Full-access profile: elixir/WORKFLOW.md
 
 This fork's `elixir/WORKFLOW.md` explicitly selects full access for trusted,
 unattended work. Codex can update Git metadata and repository `.codex` files
