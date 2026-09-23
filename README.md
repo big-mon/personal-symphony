@@ -1,6 +1,6 @@
 # Personal Symphony
 
-Linear の課題を受け取り、Codex が実装・検証・PR作成まで進める OpenAI Symphony のフォークです。
+LinearとGitHubを前提に、Codex が実装・検証・PR作成まで進める OpenAI Symphony のフォークです。
 レビュー・マージ・課題の完了は人間が行います。
 
 > 信頼できる環境での試用を想定しています。作業ディレクトリの分離はセキュリティ上の隔離ではありません。
@@ -12,9 +12,9 @@ Linear の課題を受け取り、Codex が実装・検証・PR作成まで進�
 
 このリポジトリを開いたAIエージェントに、セットアップや制約の確認を依頼してください。
 設定・実行手順の正本は [`WORKFLOW.md`](WORKFLOW.md)、セットアップ・設定変更は[運用手順](docs/repository-routing.md)です。
-[配布バイナリ](https://github.com/big-mon/personal-symphony/releases)やソースからの起動は[Elixirガイド](elixir/README.md)を参照します。
+エンジン共通のビルド・起動方法は[Elixirガイド](elixir/README.md)、このフォークの運用はLinear専用です。
 
-Linear の `Repository` 子ラベルで、`~/Repos/<ラベル名>` にあるリポジトリを選びます。
+この運用にはLinearのAPIキーと `Repository` ラベルグループが必要です。子ラベルで、`~/Repos/<ラベル名>` にあるリポジトリを選びます。
 起動前のホスト処理がそのoriginから課題専用のcloneを用意し、Codex が実装・PR作成を行います。登録元は変更しません。
 
 ## 開発

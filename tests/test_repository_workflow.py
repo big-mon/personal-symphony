@@ -297,7 +297,7 @@ class Routing(unittest.TestCase):
             self.run_gate(snapshot)
         (self.workspace / "repo/unfinished.txt").write_text("keep")
         with patch.object(routing, "linear_page", return_value=last), contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(0, routing.main([ISSUE_ID]))
+            self.assertEqual(0, routing.main([]))
         self.assertEqual("keep", (self.workspace / "repo/unfinished.txt").read_text())
 
     def test_host_rejects_bad_pages_before_binding(self):
@@ -335,10 +335,9 @@ class Routing(unittest.TestCase):
         (self.workspace / "repo/unfinished.txt").write_text("keep")
         different = self.snapshot()["pages"][0]["response"]
         different["data"]["issue"]["id"] = "22222222-2222-4222-8222-222222222222"
-        for response, args in ((different, []), (different, [ISSUE_ID]),
-                               (self.snapshot(1)["pages"][0]["response"], [])):
+        for response in (different, self.snapshot(1)["pages"][0]["response"]):
             with patch.object(routing, "linear_page", return_value=response), contextlib.redirect_stderr(io.StringIO()):
-                self.assertEqual(1, routing.main(args))
+                self.assertEqual(1, routing.main([]))
             self.assertEqual(marker, (self.workspace / ".repository-binding.json").read_bytes())
             self.assertEqual("keep", (self.workspace / "repo/unfinished.txt").read_text())
 
@@ -364,6 +363,20 @@ class Routing(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True), contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(1, routing.main([]))
         self.assertFalse((self.workspace / "repo").exists())
+
+    def test_snapshot_gate_needs_no_agent_token_and_rejects_wrong_uuid(self):
+        self.run_gate(self.snapshot())
+        snapshot = self.snapshot()
+        marker = (self.workspace / ".repository-binding.json").read_bytes()
+        with patch.dict(os.environ, {}, clear=True), patch.object(routing, "linear_page") as fetch:
+            with patch.object(sys, "stdin", io.StringIO(json.dumps(snapshot))), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(0, routing.main(["--snapshot", ISSUE_ID]))
+            snapshot["issue_id"] = "22222222-2222-4222-8222-222222222222"
+            snapshot["pages"][0]["response"]["data"]["issue"]["id"] = snapshot["issue_id"]
+            with patch.object(sys, "stdin", io.StringIO(json.dumps(snapshot))), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(1, routing.main(["--snapshot", ISSUE_ID]))
+            fetch.assert_not_called()
+        self.assertEqual(marker, (self.workspace / ".repository-binding.json").read_bytes())
 
     def test_cli_missing_credentials_and_invalid_workspace_fail_closed(self):
         env = os.environ.copy()

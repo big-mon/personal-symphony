@@ -20,7 +20,7 @@ agent:
   max_concurrent_agents: 3
   max_turns: 20
 codex:
-  command: codex --config shell_environment_policy.inherit=all app-server
+  command: codex app-server
   approval_policy: never
   thread_sandbox: workspace-write
   turn_sandbox_policy:
@@ -54,11 +54,16 @@ work. Only read the registered source at `~/Repos/<Repository child label name>`
 label descriptions and the prompt's label names are not routing inputs.
 
 At each continuation turn and immediately before commit, push or PR operations,
-run from the workspace root:
-`python3 "$HOME/.config/symphony/repository_bootstrap.py" '{{ issue.id }}'`.
-This repeats the live gate and checks the dispatched UUID. Use the installed
-helper unchanged; it uses inherited `LINEAR_API_KEY` without printing it.
-A missing helper or credential is a blocker, not permission to replace it.
+use Symphony's `linear_graphql` with the installed helper's `QUERY` and the exact
+UUID `{{ issue.id }}`. Fetch all label pages, starting with a null cursor and
+following `endCursor` until `hasNextPage` is false. Stop on tool/GraphQL errors or
+missing/repeated cursors. Save the complete responses to `.repository-pages.json`:
+`{"issue_id":"{{ issue.id }}","pages":[{"cursor":null,"response":{"data":...}},...]}`.
+Run from the workspace root:
+`python3 "$HOME/.config/symphony/repository_bootstrap.py" --snapshot '{{ issue.id }}' < .repository-pages.json`.
+The helper revalidates all pages, the dispatched UUID and the existing binding.
+Use the installed helper unchanged. Missing tools or helper block work; keep
+Linear authentication on the host, accessed through the injected tool.
 
 On failure, preserve the binding, clone and unfinished work. Record the redacted
 reason in the single `## Codex Workpad` and hand off to Human Review. If Linear

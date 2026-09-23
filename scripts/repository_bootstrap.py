@@ -44,13 +44,11 @@ def linear_page(issue_id, cursor):
         connection.close()
 
 
-def live_snapshot(expected_id=None):
+def live_snapshot():
     identifier = Path.cwd().name
     require(re.fullmatch(r"[A-Z][A-Z0-9]*-[1-9][0-9]*", identifier),
             "workspace name must be a Linear identifier (TEAM-123)")
-    if expected_id is not None:
-        uuid.UUID(expected_id)
-    snapshot = {"issue_id": expected_id, "pages": []}
+    snapshot = {"issue_id": None, "pages": []}
     cursor, seen = None, set()
     while True:
         response = linear_page(snapshot["issue_id"] or identifier, cursor)
@@ -169,9 +167,12 @@ def bootstrap(snapshot, issue_id):
 
 def main(args):
     try:
-        require(len(args) <= 1, "expected optional dispatched issue UUID argument")
-        snapshot = live_snapshot(args[0] if args else None)
-        bootstrap(snapshot, snapshot["issue_id"])
+        if len(args) == 2 and args[0] == "--snapshot":
+            bootstrap(json.load(sys.stdin), args[1])
+        else:
+            require(not args, "expected no arguments or --snapshot ISSUE_UUID")
+            snapshot = live_snapshot()
+            bootstrap(snapshot, snapshot["issue_id"])
         Path(".repository-blocked.txt").unlink(missing_ok=True)
         return 0
     except (ValueError, KeyError, TypeError, AttributeError, OSError,
