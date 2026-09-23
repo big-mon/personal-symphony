@@ -18,5 +18,5 @@
 
 #### Test Plan
 
-- [ ] `make -C elixir all`
-- [ ] <!-- Additional targeted checks (list below) -->
+- [ ] <!-- Applicable validation from docs/validation.md: commands and results -->
+- [ ] <!-- Full make all: passed, or not applicable with the change-scope reason -->

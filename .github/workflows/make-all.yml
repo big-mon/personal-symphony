@@ -5,6 +5,11 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   make-all:
@@ -16,8 +21,46 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Classify changes
+        id: changes
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
+        with:
+          base: ${{ github.ref }}
+          predicate-quantifier: every
+          filters: .github/validation-paths.yml
+
+      - name: Check diff and report scope
+        working-directory: .
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+          FULL: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.changes.outputs.full }}
+          WORKFLOW: ${{ github.event_name == 'workflow_dispatch' && 'false' || steps.changes.outputs.workflow }}
+        run: |
+          case "$FULL:$WORKFLOW" in
+            true:true|true:false|false:true|false:false) ;;
+            *) echo 'Missing or invalid scope classification' >&2; exit 1 ;;
+          esac
+          git diff --check "$BASE" HEAD
+          if [ "$FULL" = true ]; then
+            echo 'Validation: full make all (includes WORKFLOW tests).' >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$WORKFLOW" = true ]; then
+            echo 'Validation: diff check and WORKFLOW tests; full make all is not applicable.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Validation: diff check; Elixir checks are not applicable for these documents/procedures.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Verify scope rules
+        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.full == 'true'
+        working-directory: .
+        run: bash .github/tests/validation-paths.sh
 
       - name: Set up mise tools
+        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.full == 'true' || steps.changes.outputs.workflow == 'true'
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
           install: true
@@ -25,6 +68,7 @@ jobs:
           working_directory: elixir
 
       - name: Cache deps and build
+        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.full == 'true' || steps.changes.outputs.workflow == 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
@@ -35,4 +79,11 @@ jobs:
             ${{ runner.os }}-mix-
 
       - name: Verify make all
+        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.full == 'true'
         run: make all
+
+      - name: Verify WORKFLOW input and rendering
+        if: github.event_name != 'workflow_dispatch' && steps.changes.outputs.full == 'false' && steps.changes.outputs.workflow == 'true'
+        run: |
+          mix deps.get
+          mix test test/symphony_elixir/core_test.exs

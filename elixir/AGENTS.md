@@ -6,7 +6,8 @@ This directory contains the Elixir agent orchestration service that polls Linear
 
 - Elixir: `1.19.x` (OTP 28) via `mise`.
 - Install deps: `mix setup`.
-- Main quality gate: `make all` (format check, lint, coverage, dialyzer).
+- Full quality gate: `make all` (format check, lint, coverage, dialyzer), selected by
+  [change scope](../docs/validation.md).
 
 
 ## Codebase-Specific Conventions
@@ -29,7 +30,12 @@ This directory contains the Elixir agent orchestration service that polls Linear
 
 ## Tests and Validation
 
-Run targeted tests while iterating, then run full gates before handoff.
+Follow [the shared validation policy](../docs/validation.md) for CI and local work.
+Run targeted checks while iterating, then the applicable gate before handoff.
+Pure documents/procedures do not require `make all`; WORKFLOW changes require its
+existing consuming tests. Source, dependencies, validation infrastructure and
+unclassified paths require the full gate. Reuse passed results while their inputs
+remain unchanged; do not repeat them just for commit, push or handoff.
 
 - Prefer narrow tests that exercise real OTP processes and observable behavior over mock-only or
   broad end-to-end coverage; prove health with a synchronous call or stable effect, not only a PID.

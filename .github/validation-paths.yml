@@ -1,0 +1,17 @@
+# With predicate-quantifier: every, anything outside this allowlist runs make all.
+# Do not exclude **/*.md: test fixtures and future build inputs must remain covered.
+full:
+  - '!README.md'
+  - '!SPEC.md'
+  - '!LICENSE'
+  - '!NOTICE'
+  - '!docs/**/*.md'
+  - '!elixir/README.md'
+  - '!elixir/docs/**/*.md'
+  - '!elixir/AGENTS.md'
+  - '!elixir/WORKFLOW.md'
+  - '!.codex/skills/**/SKILL.md'
+  - '!.github/pull_request_template.md'
+  - '!.github/media/*.{png,jpg,mp4}'
+workflow:
+  - 'elixir/WORKFLOW.md'
