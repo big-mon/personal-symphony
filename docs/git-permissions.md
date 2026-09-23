@@ -68,6 +68,11 @@ or stop existing sessions. A linked worktree also requires inspecting its resolv
 Git directory and common directory; do not grant a shared repository's metadata
 as though it belonged exclusively to one issue. Prefer Symphony's ordinary clone.
 
+If a bounded upstream merge touches protected `.codex` files, grant only the
+needed fixed subdirectories for that run. The DEV-321 integration run added this
+clone's `.codex/skills/push` and `.codex/skills/land` directories only; the
+initial native Git proof used only the clone and `.git` grants.
+
 Before a bounded operational test:
 
 1. Observe no running/retrying/blocked work and coordinate any queued issues.
