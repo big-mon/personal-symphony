@@ -2,6 +2,7 @@
 # Do not exclude **/*.md: test fixtures and future build inputs must remain covered.
 full:
   - '!README.md'
+  - '!AGENTS.md'
   - '!SPEC.md'
   - '!LICENSE'
   - '!NOTICE'

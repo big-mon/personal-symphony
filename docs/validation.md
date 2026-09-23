@@ -7,7 +7,7 @@ outside it requires full validation. Never classify by file extension alone.
 | Changes | Required validation |
 | --- | --- |
 | README, SPEC, guides under `docs/` or `elixir/docs/`, license/notice, PNG/JPG/MP4 under `.github/media/` | Review content, links/media and `git diff --check` |
-| `elixir/AGENTS.md`, `.codex/skills/**/SKILL.md`, PR template | Diff check, review syntax and walk through the affected procedure; validate PR bodies with the [standalone command](../elixir/AGENTS.md#pr-requirements) when applicable |
+| Root `AGENTS.md`, `elixir/AGENTS.md`, `.codex/skills/**/SKILL.md`, PR template | Diff check, review syntax and walk through the affected procedure; validate PR bodies with the [standalone command](../elixir/AGENTS.md#pr-requirements) when applicable |
 | `elixir/WORKFLOW.md` | Diff check, review YAML front matter, prompt and changed hook/agent procedure; `cd elixir && mix deps.get && mix test test/symphony_elixir/core_test.exs` |
 | Everything else, including `elixir/lib/`, `test/` (even Markdown fixtures), `priv/`, dependencies, tool/build/test config, hooks/scripts, GitHub Actions and the scope filter itself | `make -C elixir all`, plus syntax/behavior checks for changed scripts or Actions |
 
@@ -38,6 +38,11 @@ change, or when a failure leaves uncertainty. Record commands and results in the
 workpad and PR; mark a non-applicable gate as such with its scope reason.
 
 ## CI and checks
+
+Root `AGENTS.md` contains fork work instructions outside `elixir/`, not an Elixir
+runtime or test input. Editing it alone uses procedure validation, without
+building or testing the service. Mixed changes still use the strongest gate;
+changes to the scope filter or its tests require full validation.
 
 The workflow always starts on pull requests and pushes to `main`; the existing
 `make-all` job name stays unchanged. It always checks the diff and reports the
