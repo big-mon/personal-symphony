@@ -30,7 +30,9 @@ Elixir の実装は Linear、GitHub Issues、Jira Cloud、Asana、GitLab に対�
 ## このフォークの起動方法
 
 Git、認証済みの Codex CLI、連携する課題管理ツールの認証情報が必要です。
-付属のフックでは、GitHub CLI（`gh`）と、`mise` で管理する Elixir の実行環境も使います。
+付属のフックでは、認証済みの GitHub CLI（`gh`）と、`mise` で管理する Elixir の実行環境も使います。
+サービスを実行するユーザーで `gh auth status` が成功し、対象リポジトリへのpushとPRの作成・クローズができる権限を用意してください。
+Git経由のpushと、非公開リポジトリをcloneする場合の認証も必要です。課題管理ツールの認証とは別に確認します。
 
 実装と設定の詳細は[Elixir ガイド（英語）](elixir/README.md)を参照してください。
 ソースコードと[配布バイナリ](https://github.com/big-mon/personal-symphony/releases)は、このフォークのものを使います。
@@ -56,9 +58,10 @@ mise exec -- mix build
 [Asana](elixir/README.md#asana-adapter)、
 [GitLab](elixir/README.md#gitlab-adapter)。
 
-実行用ワークフローでは、次の両方を設定します。
+実行用ワークフローでは、次の項目を設定します。
 
 - **冒頭のYAML設定**：`tracker.kind`、連携先のプロジェクトなどの対象範囲、認証情報、対応する実行対象・終了状態を指定します。認証情報は、サービスの環境変数やホスト側のシークレット参照で渡します。
+- **リポジトリ用フック**：`hooks.after_create` のclone先と、`hooks.before_remove` のPR操作先を対象リポジトリに合わせます。このフォークでは、clone先を `https://github.com/big-mon/personal-symphony` にし、削除前のMixタスクに `--repo big-mon/personal-symphony` を指定します。テンプレートやMixタスクの既定値はフォーク元を指すため、どの課題管理ツールを使う場合も変更が必要です。
 - **Markdown本文のプロンプト**：テンプレートにある Linear 用ツール・スキルの指定、作業記録やコメントの操作、状態遷移、PRの紐付け手順を、連携先に合う内容へ書き換えます。`tracker.kind` を変えるだけでは、本文の指示は切り替わりません。
 
 連携先にかかわらず、Codex は実装・検証・PR作成を担当し、人間がマージと課題の完了を行います。
