@@ -79,7 +79,8 @@ and [paths-filter behavior](https://github.com/dorny/paths-filter/tree/v3).
 
 ## Runtime workflow
 
-`elixir/WORKFLOW.md` is a template. After human review and merge, apply validation
+The fork uses root `WORKFLOW.md` and its installed helper; `elixir/WORKFLOW.md`
+is a separate engine template. After human review and merge, apply validation
 instruction changes to the installed binary's external WORKFLOW using the issue
 checkout's policy. Review the live prompt diff and validate YAML/rendering with
 the normal operational procedure. Preserve tracker settings, workspace/hooks,

@@ -4,6 +4,7 @@ The root [`WORKFLOW.md`](../WORKFLOW.md) uses `workspace-write` / `never`,
 with the session cwd at the issue workspace and the checkout in `repo/`.
 Keep that outer cwd: [protected paths](https://learn.chatgpt.com/docs/agent-approvals-security#protected-paths-in-writable-roots)
 are relative to writable roots; starting the session inside `repo/` changes the layout.
+The `before_run` helper runs with host permissions, outside the Codex sandbox.
 Permission failures use the blocked-access procedure below.
 
 ## Full-access profile: elixir/WORKFLOW.md
