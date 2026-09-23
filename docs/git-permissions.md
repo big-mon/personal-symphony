@@ -86,6 +86,18 @@ For rollback, restore only this task's changed policy/admission fields and promp
 block from the saved WORKFLOW, preserving unrelated concurrent edits. Keep the
 permission-denial guidance unless explicitly reverting that procedure too.
 
+## DEV-321 native Git proof
+
+On 2026-09-23, the bounded DEV-321 session created branch
+`codex/dev-321-git-permissions`, ran native `git add`, committed locally, pushed
+with `git push -u origin HEAD`, and opened PR #6 using the existing authorized
+GitHub authentication. The first native commit was
+`1e37328d7c7467e65b63dd7168f4688c82062ff1`.
+
+This proves only the explicit DEV-321 clone/gitdir grant used for this isolated
+session. It does not prove a reusable issue-relative Git grant for the standard
+three-agent runtime.
+
 The standard three-agent configuration has no verified issue-relative Git grant
 in this release. A successful isolated test must not be described as a fix for
 all future issues. Until an official compatible per-thread/turn configuration is
