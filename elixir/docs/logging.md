@@ -19,6 +19,22 @@ When logging Codex execution lifecycle events, include:
 
 - `session_id`: combined Codex thread/turn identifier.
 
+## Focused Log Searches
+
+Use the existing context fields to inspect only the relevant lines for an issue or session:
+
+```bash
+rg -Fw -- 'issue_identifier=DEV-318' '<LOG_DIR>'
+rg -Fw -- 'session_id=<SESSION_ID>' '<LOG_DIR>'
+```
+
+Replace `<LOG_DIR>` with the local directory containing all rotated log segments
+and `<SESSION_ID>` with the full session identifier. `-w` prevents matching
+longer identifiers while allowing a field to end at whitespace, punctuation,
+or the end of a line. Keep paths as placeholders in shared notes.
+Share only the smallest matching lines needed for the investigation, and never
+paste full logs, secrets, or credentials.
+
 ## Message Design
 
 - Use explicit `key=value` pairs in message text for high-signal fields.
