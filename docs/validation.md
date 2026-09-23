@@ -11,9 +11,9 @@ outside it requires full validation. Never classify by file extension alone.
 | `elixir/WORKFLOW.md` | Diff check, review YAML front matter, prompt and changed hook/agent procedure; `cd elixir && mix deps.get && mix test test/symphony_elixir/core_test.exs` |
 | Everything else, including `elixir/lib/`, `test/` (even Markdown fixtures), `priv/`, dependencies, tool/build/test config, hooks/scripts, GitHub Actions and the scope filter itself | `make -C elixir all`, plus syntax/behavior checks for changed scripts or Actions |
 
-Root `WORKFLOW.md` embeds executable repository routing code and is intentionally
-not allowlisted. Changes to it or `tests/test_repository_workflow.py` require the
-full gate plus `python3 tests/test_repository_workflow.py` (also run by CI). Validate
+Root `WORKFLOW.md`, `scripts/repository_bootstrap.py` and its tests are not
+allowlisted. Changes require the full gate plus
+`python3 tests/test_repository_workflow.py` (also run by CI). Validate
 its YAML/Liquid rendering and use the isolated [routing checks](repository-routing.md)
 for runtime adoption.
 

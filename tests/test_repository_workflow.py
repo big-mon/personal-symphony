@@ -1,4 +1,4 @@
-"""Exercise the exact WORKFLOW bootstrap with real disposable Git repositories."""
+"""Exercise repository routing with real disposable Git repositories."""
 import contextlib
 import copy
 import io
@@ -6,15 +6,16 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
-WORKFLOW = Path(__file__).resolve().parents[1] / "WORKFLOW.md"
-CODE = WORKFLOW.read_text().split("```python\n", 1)[1].split("\n```", 1)[0]
-MODULE = {"__name__": "repository_workflow"}
-exec(compile(CODE, str(WORKFLOW), "exec"), MODULE)
-REAL_GIT = MODULE["git"]
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts/repository_bootstrap.py"
+sys.path.insert(0, str(SCRIPT.parent))
+import repository_bootstrap as routing
+
+REAL_GIT = routing.git
 
 
 class Routing(unittest.TestCase):
@@ -24,7 +25,7 @@ class Routing(unittest.TestCase):
         self.root = Path(self.tmp.name).resolve()
         self.cwd = Path.cwd()
         self.addCleanup(os.chdir, self.cwd)
-        self.addCleanup(MODULE.update, git=REAL_GIT)
+        self.addCleanup(setattr, routing, "git", REAL_GIT)
         home = self.root / "home"
         (home / "Repos").mkdir(parents=True)
         home_patch = patch.object(Path, "home", return_value=home)
@@ -58,7 +59,7 @@ class Routing(unittest.TestCase):
                 source = self.sources[0 if "/alpha.git" in url else 1]
                 return REAL_GIT(cwd, "ls-remote", str(source))
             return REAL_GIT(cwd, *args)
-        MODULE["git"] = fixture_transport
+        routing.git = fixture_transport
 
     def snapshot(self, index=0):
         label = {"id": f"label-{index}", "name": self.sources[index].name,
@@ -74,7 +75,7 @@ class Routing(unittest.TestCase):
 
     def run_gate(self, snapshot):
         with contextlib.redirect_stdout(io.StringIO()):
-            return MODULE["bootstrap"](snapshot)
+            return routing.bootstrap(snapshot)
 
     def test_two_targets_retry_and_changed_label(self):
         before = [REAL_GIT(s, "status", "--porcelain") for s in self.sources]
@@ -169,16 +170,16 @@ class Routing(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unbound"):
             self.run_gate(self.snapshot())
         (self.workspace / "repo").rmdir()
-        git = MODULE["git"]
+        git = routing.git
         def failed_clone(cwd, *args):
             if args[0] == "clone":
                 Path(args[-1]).mkdir()
                 raise ValueError("clone failed")
             return git(cwd, *args)
-        MODULE["git"] = failed_clone
+        routing.git = failed_clone
         with self.assertRaisesRegex(ValueError, "clone failed"):
             self.run_gate(self.snapshot())
-        MODULE["git"] = git
+        routing.git = git
         self.assertTrue((self.workspace / ".repository-binding.json").exists())
         with self.assertRaisesRegex(ValueError, "incomplete"):
             self.run_gate(self.snapshot())
@@ -188,17 +189,17 @@ class Routing(unittest.TestCase):
         checkout = self.workspace / "repo"
         (checkout / "unfinished.txt").write_text("keep")
         binding = (self.workspace / ".repository-binding.json").read_bytes()
-        git = MODULE["git"]
+        git = routing.git
         def inaccessible(cwd, *args):
             if args[0] == "ls-remote":
                 raise ValueError("Git operation failed (details withheld)")
             return git(cwd, *args)
-        MODULE["git"] = inaccessible
+        routing.git = inaccessible
         with self.assertRaisesRegex(ValueError, "Git operation failed"):
             self.run_gate(self.snapshot())
         self.assertEqual(binding, (self.workspace / ".repository-binding.json").read_bytes())
         self.assertEqual("keep", (checkout / "unfinished.txt").read_text())
-        MODULE["git"] = git
+        routing.git = git
         REAL_GIT(self.sources[0], "remote", "set-url", "origin", "https://github.com/example/beta.git")
         with self.assertRaisesRegex(ValueError, "Repository changed"):
             self.run_gate(self.snapshot())
@@ -249,7 +250,7 @@ class Routing(unittest.TestCase):
     def test_cli_redacts_untrusted_input(self):
         snapshot = self.snapshot()
         snapshot["pages"][0]["response"]["errors"] = [{"message": "SECRET_CANARY"}]
-        result = subprocess.run(["python3", "-c", CODE], input=json.dumps(snapshot), text=True, capture_output=True)
+        result = subprocess.run([sys.executable, str(SCRIPT)], input=json.dumps(snapshot), text=True, capture_output=True)
         self.assertEqual(1, result.returncode)
         self.assertNotIn("SECRET_CANARY", result.stderr + result.stdout)
 
