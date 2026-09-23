@@ -170,6 +170,10 @@ Notes:
   - `codex.approval_policy` defaults to `{"reject":{"sandbox_approval":true,"rules":true,"mcp_elicitations":true}}`
   - `codex.thread_sandbox` defaults to `workspace-write`
   - `codex.turn_sandbox_policy` defaults to a `workspaceWrite` policy rooted at the current issue workspace
+- This fork's `WORKFLOW.md` explicitly selects `never`, `danger-full-access` and
+  `dangerFullAccess` for trusted unattended work, including Git and `.codex` edits.
+  This removes Codex filesystem/network sandbox isolation and grants the host user's
+  access. See [deployment and verification](../docs/git-permissions.md) before use.
 - `codex.turn_timeout_ms` is the maximum silence interval while a turn is streaming. Each
   app-server update resets it; it is not a total turn runtime cap.
 - Supported `codex.approval_policy` values depend on the targeted Codex app-server version. In the current local Codex schema, string values include `untrusted`, `on-failure`, `on-request`, and `never`, and object-form `reject` is also supported.
@@ -177,7 +181,7 @@ Notes:
 - When `codex.turn_sandbox_policy` is set explicitly, Symphony passes the map through to Codex
   unchanged. Compatibility then depends on the targeted Codex app-server version rather than local
   Symphony validation.
-- Workflows that run package managers or other commands that resolve external hosts should set
+- Workflows using `workspaceWrite` that run package managers or resolve external hosts should set
   `networkAccess: true` in `codex.turn_sandbox_policy`; otherwise DNS/network access may be denied
   by the Codex turn sandbox.
 - `agent.max_turns` caps how many back-to-back Codex turns Symphony will run in a single agent
