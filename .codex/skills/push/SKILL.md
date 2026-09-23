@@ -63,7 +63,10 @@ description:
      scope (all intended work on the branch), not just the newest commits,
      including newly added work, removed work, or changed approach.
    - Do not reuse stale description text from earlier iterations.
-7. Validate PR body with `mix pr_body.check` and fix all reported issues.
+7. Validate PR body with the standalone command below and fix all reported issues.
+   It requires the Elixir/Erlang runtime from `elixir/mise.toml`, but no Hex,
+   Rebar, Symphony dependencies or build. The distributed binary does not supply
+   this development runtime.
 8. Reply with the PR URL from `gh pr view`.
 
 ## Commands
@@ -117,7 +120,7 @@ fi
 
 tmp_pr_body=$(mktemp)
 gh pr view --json body -q .body > "$tmp_pr_body"
-(cd elixir && mix pr_body.check --file "$tmp_pr_body")
+(cd elixir && mise exec -- elixir -r lib/mix/tasks/pr_body.check.ex -e 'Mix.start(); Mix.Task.run("pr_body.check", System.argv())' -- --file "$tmp_pr_body")
 rm -f "$tmp_pr_body"
 
 # Show PR URL for the reply
