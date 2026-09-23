@@ -5,7 +5,7 @@ issue tracker. It picks up eligible issues, gives each one a separate workspace,
 and runs Codex to implement and validate the work.
 
 This fork uses a human review workflow: Codex prepares the pull request and hands
-it off to `Human Review`; a person reviews, merges, and completes the issue.
+work back for review; a person reviews, merges, and completes the issue.
 
 > [!WARNING]
 > This is experimental software for trusted environments. The supplied workflow
@@ -19,12 +19,12 @@ it off to `Human Review`; a person reviews, merges, and completes the issue.
 2. Symphony polls the tracker and creates or reuses that issue's workspace.
 3. Codex reads the workflow and repository instructions, implements the change,
    runs checks, and opens a PR with validation evidence.
-4. You review the PR. Requested changes return to `Rework`; accepted work is
+4. You review the PR. Requested changes return to active work; accepted work is
    merged and completed by a person.
 
 The Elixir service supports Linear, GitHub Issues, Jira Cloud, Asana, and GitLab.
-This fork's setup guide uses Linear. The workflow controls which issues run,
-workspace setup, concurrency, and the instructions given to Codex.
+The current deployment uses Linear, but the tracker is configurable. The workflow
+controls which issues run, workspace setup, concurrency, and Codex's instructions.
 
 [![Symphony demo video preview](.github/media/symphony-demo-poster.jpg)](https://player.vimeo.com/video/1186371009?h=5626e4b899)
 
@@ -49,12 +49,42 @@ mise exec -- mix setup
 mise exec -- mix build
 ```
 
-Copy `elixir/WORKFLOW.md` to a runtime location outside the checkout. Retain
-`tracker.kind: linear`, choose a separate workspace root, and merge these fork
-settings into its YAML front matter. Use your project's slug if different:
+### Configure the tracker and workflow
+
+Copy `elixir/WORKFLOW.md` to a runtime location outside the checkout and choose a
+separate workspace root. Use the guide for your selected tracker:
+[Linear](elixir/README.md#linear-adapter-profile),
+[GitHub Issues](elixir/README.md#github-issues-adapter),
+[Jira Cloud](elixir/README.md#jira-cloud-adapter),
+[Asana](elixir/README.md#asana-adapter), or
+[GitLab](elixir/README.md#gitlab-adapter).
+
+Configure both parts of the runtime workflow:
+
+- **YAML front matter:** set `tracker.kind`, provider scope and credentials, and
+  active/terminal states supported by that adapter. Supply credentials through
+  the service environment or host-side secret references.
+- **Markdown prompt:** replace the template's Linear tool requirements and skill
+  references, workpad/comment operations, state transitions, and PR-linking
+  procedures with equivalents for the selected tracker. Changing `tracker.kind`
+  alone does not adapt the prompt.
+
+Keep the human review policy across trackers: Codex implements, validates, and
+opens the PR; humans merge and complete the issue. Replace the template's
+`Merging` routes and `land` instructions accordingly. Pause dispatch during review
+without making the issue terminal. Adapters limited to open/closed states need a
+supported dispatch filter, such as `tracker.required_labels`, instead of a custom
+review state. The cleanup hook below closes open PRs on terminal issues, so mark
+accepted work complete after merging its PR.
+
+### Linear example (current deployment)
+
+Merge these settings into the copied workflow's YAML front matter. Use your
+project's slug if different:
 
 ```yaml
 tracker:
+  kind: linear
   provider:
     project_slug: personal-symphony-506ccfb1912c
   active_states:
@@ -73,15 +103,15 @@ agent:
   max_concurrent_agents: 1
 ```
 
-Also replace the template prompt's `Merging` routes and `land` instructions with
-this fork's policy: Codex implements, validates, opens the PR, and hands the issue
-to `Human Review`; humans merge and complete it. Ensure these Linear states exist.
-Keep `Human Review` outside active and terminal states to preserve its workspace.
-The cleanup hook closes open PRs on terminal issues, so mark accepted work `Done`
-after merging its PR.
+Provide `LINEAR_API_KEY` through the service environment. In this example, use
+`Human Review` for handoff, `Rework` for requested changes, and `Done` after merge.
+Ensure these Linear states exist; keep `Human Review` outside active and terminal
+states to preserve its workspace. Apply the human review prompt changes above.
 
-Provide `LINEAR_API_KEY` through the service environment. Start from `elixir/`
-with the configured file and the CLI's required acknowledgement flag:
+### Start the service
+
+From `elixir/`, pass the configured runtime file and the CLI's required
+acknowledgement flag:
 
 ```bash
 mise exec -- ./bin/symphony /absolute/path/to/WORKFLOW.md \
