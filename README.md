@@ -34,6 +34,35 @@ help with the setup:
 > Set up Symphony for my repository based on
 > https://github.com/openai/symphony/blob/main/elixir/README.md
 
+For the `big-mon/personal-symphony` fork, follow the same
+[Elixir setup](elixir/README.md) and adjust these fork-specific values in your runtime copy of
+`WORKFLOW.md`:
+
+```yaml
+tracker:
+  provider:
+    project_slug: personal-symphony-506ccfb1912c
+  active_states:
+    - Todo
+    - In Progress
+    - Rework
+hooks:
+  after_create: |
+    git clone --depth 1 https://github.com/big-mon/personal-symphony .
+    if command -v mise >/dev/null 2>&1; then
+      cd elixir && mise trust && mise exec -- mix deps.get
+    fi
+  before_remove: |
+    cd elixir && mise exec -- mix workspace.before_remove --repo big-mon/personal-symphony
+agent:
+  max_concurrent_agents: 1
+```
+
+Pass auth through environment variables or host-side secret references; do not commit secret values
+to docs or the repository. In this fork's runtime workflow body, replace the inherited `Merging`
+and `land` instructions with the fork policy: Codex owns implementation, validation, PR creation,
+and handoff to `Human Review`; humans own PR merges and post-merge completion.
+
 ---
 
 ## License
