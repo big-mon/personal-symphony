@@ -25,7 +25,9 @@ description:
 
 ## Steps
 
-1. Identify current branch and confirm remote state.
+1. Identify current branch and confirm remote state. For local `git add`/`commit`
+   failures, distinguish sandbox/OS write denial from authentication or network
+   failure; inspect the workspace and `git rev-parse --absolute-git-dir` read-only.
 2. Follow `docs/validation.md` to select validation from the whole change scope.
    Run missing applicable checks before pushing; reuse passed local results when
    their inputs have not changed. Record non-applicable full validation explicitly.
@@ -38,6 +40,13 @@ description:
    - If the failure is due to auth, permissions, or workflow restrictions on
      the configured remote, stop and surface the exact error instead of
      rewriting remotes or switching protocols as a workaround.
+   - The same stop rule applies to local Git metadata write denial. Do not move
+     `.git`, disable the sandbox, switch credentials, or create commits via the
+     GitHub API to bypass it. Read-only checks of existing authorized auth and the
+     configured remote remain allowed.
+   - Record the command, exact error, workspace/gitdir, effective permissions and
+     diagnostics in the existing workpad; hand off to `Human Review` as blocked.
+     Do not claim commit/push or PR creation succeeded.
 
 5. Ensure a PR exists for the branch:
    - If no PR exists, create one.
