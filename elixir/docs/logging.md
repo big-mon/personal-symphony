@@ -24,14 +24,15 @@ When logging Codex execution lifecycle events, include:
 Use the existing context fields to inspect only the relevant lines for an issue or session:
 
 ```bash
-rg -F 'issue_identifier=DEV-318' <LOG_DIR_OR_ROTATED_LOG_GLOB>
-rg -F 'session_id=<SESSION_ID>' <LOG_DIR_OR_ROTATED_LOG_GLOB>
+rg -F 'issue_identifier=DEV-318 ' <LOG_DIR_OR_ROTATED_LOG_GLOB>
+rg -F 'session_id=<SESSION_ID> ' <LOG_DIR_OR_ROTATED_LOG_GLOB>
 ```
 
 Choose a local log directory or glob that includes every rotated segment, and
-keep it as an explicit placeholder in notes. Share only the smallest matching
-lines needed for the investigation, and never paste full logs, secrets, or
-credentials.
+keep it as an explicit placeholder in notes. Include the delimiter after the
+field value in the fixed string so ticket prefixes do not match other issues.
+Share only the smallest matching lines needed for the investigation, and never
+paste full logs, secrets, or credentials.
 
 ## Message Design
 
