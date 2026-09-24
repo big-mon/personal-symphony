@@ -80,8 +80,10 @@ After bootstrap, fetch the live issue and maintain one `## Codex Workpad` with
 plan, acceptance criteria, validation and blockers. For Backlog, Human Review
 or terminal states, end without repository changes. For Merging, follow the
 merge handling below instead of restarting implementation. Move Todo to In Progress.
-For Rework, read human feedback and reuse the bound clone/PR; do not automatically
-close a PR or discard work. Inspect the target's current branch and default branch
+For Rework, read human feedback and update the existing workpad plan, then move
+the issue to In Progress and read back its state before resuming implementation.
+Reuse the bound clone/PR; do not automatically close a PR or discard work.
+Inspect the target's current branch and default branch
 (`git symbolic-ref refs/remotes/origin/HEAD`), status, linked PRs and instructions.
 If the remote is empty and has no default branch, retain the valid unborn
 checkout and hand off the missing PR base as a blocker; never seed a default
