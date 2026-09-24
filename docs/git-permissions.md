@@ -33,7 +33,7 @@ the full-access turn policy. An explicit policy is passed through unchanged, so
 this requires no Symphony engine change, rebuild or Codex user-config change.
 Omitting these fields restores the engine's sandboxed defaults, not this profile.
 
-## Apply after human merge
+## Apply after approved merge
 
 The installed service reads the WORKFLOW file supplied at startup.
 Changing the repository template does not change that file or deploy the policy.
