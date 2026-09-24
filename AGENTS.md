@@ -13,6 +13,6 @@ Read the matching guide when its task applies:
 | Diagnose stalled, retrying, or failed runs | [Debug](.codex/skills/debug/SKILL.md) |
 | Investigate Git denial or deploy permission changes | [Git permissions](docs/git-permissions.md) |
 | Commit, sync, or publish a PR | [Commit](.codex/skills/commit/SKILL.md), [pull](.codex/skills/pull/SKILL.md), [push](.codex/skills/push/SKILL.md), as applicable |
-| Prepare merge handoff or an explicitly requested merge | [Land](.codex/skills/land/SKILL.md) |
+| Prepare merge handoff, land an issue moved to Merging by a human, or handle an explicit merge request | [Land](.codex/skills/land/SKILL.md) |
 | Cut an explicitly requested release | [Release](.codex/skills/release/SKILL.md) |
 | Use Symphony's injected `linear_graphql` tool | [Linear](.codex/skills/linear/SKILL.md) |

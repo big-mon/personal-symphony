@@ -1,13 +1,15 @@
 ---
 name: land
-description: Prepare a PR for merge by resolving conflicts, checks, and reviews; merge only when explicitly authorized.
+description: Resolve PR conflicts, checks, and reviews; land after a human moves the issue to Merging or explicitly requests a merge.
 ---
 
 # Land
 
-The [fork policy](../../../README.md#running-this-fork) ends automated work at
-`Human Review`; humans own merging and post-merge completion. Use this procedure
-to prepare that handoff. Execute the merge step only on explicit user instruction.
+Under the [fork policy](../../../README.md#running-this-fork), a human moving the
+issue to `Merging` or explicitly requesting a merge authorizes landing. Without
+that authorization, prepare the PR and hand off at `Human Review`. Never move
+an issue to `Merging` yourself. After merging a workflow issue, follow the
+WORKFLOW completion procedure to update it to `Done`.
 
 ## Procedure
 
@@ -24,9 +26,10 @@ to prepare that handoff. Execute the merge step only on explicit user instructio
 4. After each head change, sync and reassess validation/review for that head.
    If checks are missing, inspect their trigger and permissions; do not manufacture
    commits or rewrite history merely to trigger CI.
-5. Once conflicts, checks, and reviews are clear, report the PR URL and validation
-   evidence for `Human Review`. With explicit merge authorization, recheck the
-   current head and squash-merge using the PR title/body, then verify merged state:
+5. Once conflicts, checks, and reviews are clear, hand off the PR URL and validation
+   evidence for `Human Review` if merge authorization has not been given. With
+   authorization as defined above, squash-merge the validated head using the PR
+   title/body, then verify merged state:
 
    ```sh
    pr_title=$(gh pr view --json title -q .title)
