@@ -84,5 +84,5 @@ is a separate engine template. After human review and merge, apply validation
 instruction changes to the installed binary's external WORKFLOW using the issue
 checkout's policy. Review the live prompt diff and validate YAML/rendering with
 the normal operational procedure. Preserve tracker settings, workspace/hooks,
-model, billing, concurrency, and human merge policy. Repository edits alone do
+model, billing, concurrency, and human approval through Merging. Repository edits alone do
 not update the running service.
