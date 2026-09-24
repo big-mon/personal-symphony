@@ -80,6 +80,8 @@ After bootstrap, fetch the live issue and maintain one `## Codex Workpad` with
 plan, acceptance criteria, validation and blockers. For Backlog, Human Review
 or terminal states, end without repository changes. For Merging, follow the
 merge handling below instead of restarting implementation. Move Todo to In Progress.
+Verify attached PR URLs belong to the bound repository before reading PR feedback
+or using it to update the workpad. Stop on a mismatched attachment.
 For Rework, read human feedback and update the existing workpad plan, then move
 the issue to In Progress and read back its state before resuming implementation.
 Reuse the bound clone/PR; do not automatically close a PR or discard work.
@@ -93,8 +95,7 @@ Run commands in `repo/`. Reuse still-valid checks; rerun when their inputs chang
 Repeat the fresh Repository gate before commit/push and PR operations. Use the
 validated binding's `repository` for every `gh --repo OWNER/REPO` operation;
 never use the orchestrator's origin or infer the target from a pre-existing issue
-attachment. Verify attached PR URLs belong to the bound repository BEFORE
-reading feedback or modifying them. Stop on a mismatched attachment. After PR
+attachment. Verify attached PR URLs against the binding again before modifying them. After PR
 creation, read back its URL, base repository and head branch/SHA, compare with the
 binding and the pushed commit, then attach that URL to this issue. Check actual
 CI and review requirements of the target repository. Hand off to Human Review
