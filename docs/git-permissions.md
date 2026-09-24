@@ -33,7 +33,7 @@ the full-access turn policy. An explicit policy is passed through unchanged, so
 this requires no Symphony engine change, rebuild or Codex user-config change.
 Omitting these fields restores the engine's sandboxed defaults, not this profile.
 
-## Apply after human merge
+## Apply after approved merge
 
 The installed service reads the WORKFLOW file supplied at startup.
 Changing the repository template does not change that file or deploy the policy.
@@ -41,7 +41,7 @@ Changing the repository template does not change that file or deploy the policy.
 1. Wait for active sessions to finish and coordinate queued work before rollout.
 2. Save a copy of the runtime WORKFLOW. Replace only the three policy fields above;
    preserve its command/model, tracker, credentials, hooks, workspace root,
-   concurrency and human merge policy. Do not copy the entire repository template
+   concurrency and human approval through Merging. Do not copy the entire repository template
    over the runtime file.
 3. Validate the YAML and confirm the diff contains only the intended policy change.
    Symphony reloads the file, but existing Codex sessions retain their captured
